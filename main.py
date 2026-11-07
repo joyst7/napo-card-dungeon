@@ -25,11 +25,46 @@ DUNGEONS = [
     dict(name="ゆめくいの試練", last=30, star=17, guards=[5, 15, 25], mids=[10, 20], items={},
          desc=["本番。30Fの奥のゆめくいをたおせ", "ショップ・モンスターハウスあり"]),
 ]
+DROP_RATE = 0.7            # 合成マンが合成の巻物を落とす確率
 FLOOR_TURN_LIMIT = 600     # 1フロアに居られるターン数
 INV_MAX = 20
-INV_ROWS = 12              # もちもの画面で一度に見せる行数（超えたらスクロール）
+INV_ROWS = 10              # もちもの画面の1列の行数。INV_MAXが20なら2列で全部見える
+INV_COLW = 122             # 1列の幅(px)。アイテム名は ITEM_NAME_MAX 文字までにすること
+ITEM_NAME_MAX = 9          # アイテム名の最大文字数（杖の回数[n]は別。2列に収めるための上限）
 CARD_MAX = 10
 SLIDE_FRAMES = 8
+SLIDE_LIMIT = 16           # 矢印の床で1回にすべれる最大マス数
+# 矢印の床パズルの配置（柱の位置, [(矢印の位置, 向き), ...]）。
+# 4つの入口のどこから入っても解け、入口へ戻れなくなる場所がないことを、全探索で確かめて採用している
+SLIDE_LAYOUTS = [
+    (
+        # どの入口からも8手以上かかり、矢印のせいで最低3手の遠回りになる配置
+        [(1, 11), (2, 3), (3, 8), (4, 4), (5, 6), (5, 7), (5, 8), (6, 4), (7, 3), (7, 7), (8, 3), (9, 4),
+         (9, 6), (10, 4), (10, 7), (11, 11), (15, 10), (17, 3)],
+        [((2, 1), (0, -1)), ((2, 4), (1, 0)), ((2, 5), (0, 1)), ((2, 7), (-1, 0)), ((4, 6), (-1, 0)),
+         ((5, 5), (0, -1)), ((7, 2), (0, 1)), ((9, 8), (-1, 0)), ((9, 9), (0, 1)), ((11, 5), (1, 0)),
+         ((11, 6), (0, -1)), ((14, 2), (0, -1)), ((15, 9), (0, -1)), ((16, 6), (0, -1)),
+         ((18, 3), (-1, 0)), ((18, 10), (-1, 0))],
+    ),
+    (
+        # 最短11手、矢印で最低7手の遠回り
+        [(1, 10), (2, 5), (3, 9), (4, 6), (6, 7), (8, 4), (9, 6), (10, 7), (11, 3), (11, 5), (11, 8),
+         (12, 3), (12, 6), (13, 8), (15, 5), (15, 6), (16, 3), (17, 8)],
+        [((3, 1), (0, 1)), ((5, 2), (1, 0)), ((7, 5), (1, 0)), ((9, 9), (0, -1)), ((10, 5), (0, -1)),
+         ((11, 4), (0, 1)), ((11, 6), (1, 0)), ((11, 11), (-1, 0)), ((12, 8), (0, 1)), ((13, 4), (0,
+         -1)), ((14, 1), (0, -1)), ((14, 2), (-1, 0)), ((14, 4), (0, -1)), ((14, 7), (1, 0)), ((16, 10),
+         (0, 1)), ((17, 1), (0, -1))],
+    ),
+    (
+        # 最短8手、矢印で最低1手の遠回り
+        [(1, 5), (2, 3), (2, 11), (4, 2), (5, 2), (6, 4), (6, 5), (9, 7), (9, 11), (10, 5), (11, 9),
+         (12, 2), (12, 7), (12, 9), (15, 4), (16, 4), (16, 7), (17, 3)],
+        [((3, 5), (1, 0)), ((3, 10), (1, 0)), ((4, 3), (1, 0)), ((4, 7), (0, 1)), ((9, 2), (0, 1)), ((9,
+         4), (-1, 0)), ((9, 5), (-1, 0)), ((9, 6), (0, -1)), ((10, 8), (0, 1)), ((11, 6), (0, -1)),
+         ((11, 7), (0, 1)), ((13, 10), (-1, 0)), ((15, 9), (1, 0)), ((15, 10), (0, -1)), ((15, 11), (0,
+         1)), ((16, 8), (1, 0))],
+    ),
+]
 
 DOORS = {"L": (0, 6), "R": (RW - 1, 6), "U": (10, 0), "D": (10, RH - 1)}
 DOOR_IN = {"L": [(1, 6), (2, 6)], "R": [(RW - 2, 6), (RW - 3, 6)],
@@ -80,7 +115,8 @@ CARDS = {
     "drain": C("きゅうけつ", 2, "passive", {}, "物理ダメージの25%ぶんHPを吸い取る"),
     "skin": C("かたいひふ", 2, "passive", {}, "受けるダメージがいつも2へる"),
     "counter": C("はんげき", 2, "passive", {}, "なぐられた時30%で同じダメージを返す（物理）"),
-    "evade": C("みかわし", 2, "passive", {}, "敵の攻撃を12%でかわす"),
+    # 強力なので出現率を下げている（w=0.4）。100%（9枚）で、かわせる攻撃をすべてかわす
+    "evade": C("みかわし", 2, "passive", {}, "敵の攻撃を12%でかわす（重ねて100%まで）", w=0.4),
     "staffer": C("つえの名手", 2, "passive", {}, "杖と巻物のダメージが1.5倍になる"),
     "goldrush": C("ゴールドラッシュ", 2, "passive", {}, "拾うギタンが2倍になる"),
     "medit": C("めいそう", 2, "passive", {}, "MPの自然回復が3倍になる"),
@@ -97,6 +133,28 @@ CARDS = {
     "soul": C("ふたつめのいのち", 3, "passive", {}, "倒れた時1度だけHP半分で復活。使うと消える", g=True),
 }
 RARITY_COL = {1: 13, 2: 12, 3: 10}
+# かいせつページに出す「同じカードを重ねたとき」の短い説明
+STACK_NOTE = {
+    "atk2": "足し算", "def2": "足し算", "hp10": "足し算", "mag2": "足し算", "mp6": "足し算",
+    "atk4": "足し算", "def4": "足し算", "hp20": "足し算", "mag4": "足し算",
+    "atk7": "足し算", "allup": "足し算",
+    "fire": "重ねても同じ", "heal": "重ねても同じ", "thunder": "重ねても同じ",
+    "pierce": "重ねても同じ", "steal": "重ねても同じ", "warp": "重ねても同じ",
+    "hoshi": "重ねても同じ", "flare": "重ねても同じ",
+    "hara": "重ねても同じ",
+    "renda": "30%/枚 回数は最大2回",
+    "crit": "25%/枚 最大100%",
+    "drain": "25%/枚 足し算",
+    "skin": "-2/枚 足し算",
+    "counter": "30%/枚 最大100%",
+    "evade": "12%/枚 最大100%",
+    "staffer": "+0.5倍/枚",
+    "goldrush": "+1倍/枚",
+    "medit": "回復+2倍ぶん/枚",
+    "magsword": "魔力×枚数",
+    "spirit": "回復+2倍ぶん/枚",
+    "soul": "1枚で1回",
+}
 TYPE_LABEL = {"stat": ("ステータス", 9), "skill": ("わざ", 8), "passive": ("パッシブ", 11),
               "item": ("どうぐ", 3)}
 TYPE_GLYPH = {"stat": "力", "skill": "技", "passive": "常", "item": "袋"}
@@ -105,46 +163,48 @@ TYPE_GLYPH = {"stat": "力", "skill": "技", "passive": "常", "item": "袋"}
 # ---------------------------------------------------------------------------
 # 敵
 # ---------------------------------------------------------------------------
-def E(hp, atk, df=0, phys=True, mag=True, spr="", fmin=1, fmax=10, w=10, **kw):
-    d = dict(hp=hp, atk=atk, df=df, phys=phys, mag=mag, spr=spr, fmin=fmin, fmax=fmax, w=w)
+def E(hp, atk, df=0, spr="", fmin=1, fmax=10, w=10, **kw):
+    d = dict(hp=hp, atk=atk, df=df, spr=spr, fmin=fmin, fmax=fmax, w=w)
     d.update(kw)
     return d
 
 
 ENEMIES = {
     # ---- 1〜10F ----
-    "マムル": E(9, 3, spr="mamuru", fmin=1, fmax=4, w=30),
-    "キラーバット": E(7, 3, spr="bat", fmin=1, fmax=6, w=18, acts=2, erratic=0.3),
-    "ゆうれい": E(12, 4, phys=False, spr="ghost", fmin=2, fmax=7, w=14),
-    "アイアンヘッド": E(18, 5, 2, mag=False, spr="iron", fmin=3, fmax=8, w=14),
-    "ぬすっと": E(13, 3, spr="thief", fmin=3, fmax=9, w=8, ai="thief"),
-    "ガイコツまどう": E(14, 4, spr="skull", fmin=4, fmax=11, w=12, ai="ranged"),
-    "こうらがめ": E(11, 5, phys=False, mag=False, spr="turtle", fmin=4, fmax=10, w=6),
-    "ぼうれい武者": E(26, 8, phys=False, spr="musha", fmin=6, fmax=13, w=9),
-    "はがねゴーレム": E(42, 10, 4, mag=False, spr="golem", fmin=7, fmax=15, w=12, slow=True),
-    "ドラゴン": E(45, 11, 1, spr="dragon", fmin=8, fmax=16, w=10, ai="breath"),
+    "マムル": E(9, 3, spr="mamuru", elem="wood", fmin=1, fmax=4, w=30),
+    "キラーバット": E(7, 3, spr="bat", elem="dark", fmin=1, fmax=6, w=18, acts=2, erratic=0.3),
+    "ゆうれい": E(12, 4, spr="ghost", elem="light", fmin=2, fmax=7, w=14),
+    "アイアンヘッド": E(18, 5, 2, spr="iron", elem="fire", fmin=3, fmax=8, w=14),
+    "ぬすっと": E(13, 3, spr="thief", elem="water", fmin=3, fmax=9, w=8, ai="thief"),
+    "ガイコツまどう": E(14, 4, spr="skull", elem="dark", race="mage", fmin=4, fmax=11, w=12, ai="ranged"),
+    "こうらがめ": E(11, 5, spr="turtle", elem="wood", fmin=4, fmax=10, w=6),
+    "ぼうれい武者": E(26, 8, spr="musha", elem="dark", fmin=6, fmax=13, w=9),
+    "はがねゴーレム": E(42, 10, 4, spr="golem", elem="water", fmin=7, fmax=15, w=12, slow=True),
+    "ドラゴン": E(45, 11, 1, spr="dragon", elem="fire", race="dragon", fmin=8, fmax=16, w=10, ai="breath"),
     # ---- 11〜20F（上位種は色ちがい） ----
-    "あなぐらマムル": E(34, 13, 2, spr="mamuru", fmin=11, fmax=16, w=24, pal={9: 4, 14: 8}),
-    "ブラッドバット": E(26, 11, spr="bat", fmin=11, fmax=19, w=16, acts=2, erratic=0.3, pal={2: 8}),
-    "しにがみ": E(40, 14, phys=False, spr="ghost", fmin=12, fmax=20, w=13, pal={7: 13, 6: 2}),
-    "メタルヘッド": E(52, 15, 5, mag=False, spr="iron", fmin=12, fmax=21, w=13, pal={13: 10, 5: 9}),
-    "おおどろぼう": E(36, 10, 2, spr="thief", fmin=11, fmax=22, w=7, ai="thief", pal={3: 8}),
-    "リッチ": E(40, 13, 2, spr="skull", fmin=13, fmax=24, w=11, ai="ranged", pal={2: 3, 8: 11}),
-    "てっこうがめ": E(34, 15, phys=False, mag=False, spr="turtle", fmin=14, fmax=23, w=5, pal={3: 13, 11: 7}),
+    "あなぐらマムル": E(34, 13, 2, spr="mamuru", elem="fire", fmin=11, fmax=16, w=24, pal={9: 4, 14: 8}),
+    "ブラッドバット": E(26, 11, spr="bat", elem="water", fmin=11, fmax=19, w=16, acts=2, erratic=0.3, pal={2: 8}),
+    "しにがみ": E(40, 14, spr="ghost", elem="dark", fmin=12, fmax=20, w=13, pal={7: 13, 6: 2}),
+    "メタルヘッド": E(52, 15, 5, spr="iron", elem="light", fmin=12, fmax=21, w=13, pal={13: 10, 5: 9}),
+    "おおどろぼう": E(36, 10, 2, spr="thief", elem="wood", fmin=11, fmax=22, w=7, ai="thief", pal={3: 8}),
+    "リッチ": E(40, 13, 2, spr="skull", elem="dark", race="mage", fmin=13, fmax=24, w=11, ai="ranged", pal={2: 3, 8: 11}),
+    "てっこうがめ": E(34, 15, spr="turtle", elem="water", fmin=14, fmax=23, w=5, pal={3: 13, 11: 7}),
     # ---- 21〜30F ----
-    "かげ武者": E(78, 24, 4, phys=False, spr="musha", fmin=20, fmax=30, w=13, pal={7: 5, 8: 1, 13: 2}),
-    "ミスリルゴーレム": E(120, 26, 9, mag=False, spr="golem", fmin=21, fmax=30, w=12, slow=True,
+    "かげ武者": E(78, 24, 4, spr="musha", elem="dark", fmin=20, fmax=30, w=13, pal={7: 5, 8: 1, 13: 2}),
+    "ミスリルゴーレム": E(120, 26, 9, spr="golem", elem="light", fmin=21, fmax=30, w=12, slow=True,
                        pal={13: 12, 5: 6}),
-    "スカイドラゴン": E(105, 24, 4, spr="dragon", fmin=20, fmax=30, w=11, ai="breath", pal={8: 12, 9: 6}),
-    "トロル": E(110, 28, 3, spr="ogre", fmin=21, fmax=30, w=10, slow=True, pal={4: 3, 8: 5}),
-    "アークリッチ": E(70, 22, 3, spr="skull", fmin=22, fmax=30, w=10, ai="ranged", pal={2: 1, 8: 10}),
-    "たたりがめ": E(55, 22, phys=False, mag=False, spr="turtle", fmin=23, fmax=30, w=4, pal={3: 2, 11: 14}),
-    "ヘルバット": E(48, 20, 2, spr="bat", fmin=22, fmax=30, w=12, acts=2, erratic=0.3, pal={2: 1, 7: 8}),
+    "スカイドラゴン": E(105, 24, 4, spr="dragon", elem="water", race="dragon", fmin=20, fmax=30, w=11, ai="breath", pal={8: 12, 9: 6}),
+    "トロル": E(110, 28, 3, spr="ogre", elem="wood", fmin=21, fmax=30, w=10, slow=True, pal={4: 3, 8: 5}),
+    "アークリッチ": E(70, 22, 3, spr="skull", elem="fire", race="mage", fmin=22, fmax=30, w=10, ai="ranged", pal={2: 1, 8: 10}),
+    "たたりがめ": E(55, 22, spr="turtle", elem="dark", fmin=23, fmax=30, w=4, pal={3: 2, 11: 14}),
+    "ヘルバット": E(48, 20, 2, spr="bat", elem="fire", fmin=22, fmax=30, w=12, acts=2, erratic=0.3, pal={2: 1, 7: 8}),
+    # ---- 合成の巻物を高確率で落とす（シレンのマゼルンのような存在） ----
+    "合成マン": E(12, 2, spr="mamuru", elem="light", fmin=3, fmax=30, w=5, drop="合成の巻物", pal={9: 10, 14: 12}),
     # ---- 特別 ----
-    "オーガ": E(40, 8, 1, spr="ogre", fmin=0, fmax=0, w=0, slow=True, boss=True),
-    "オーガキング": E(160, 20, 4, spr="ogre", fmin=0, fmax=0, w=0, boss=True, pal={4: 10, 8: 2, 10: 7}),
-    "ななつぼし": E(55, 9, phys=False, mag=False, spr="star", fmin=0, fmax=0, w=0, star=True, slow=True),
-    "ゆめくい": E(260, 14, 2, spr="yume", fmin=0, fmax=0, w=0, ai="boss", boss=True),
+    "オーガ": E(40, 8, 1, spr="ogre", elem="wood", fmin=0, fmax=0, w=0, slow=True, boss=True),
+    "オーガキング": E(160, 20, 4, spr="ogre", elem="fire", fmin=0, fmax=0, w=0, boss=True, pal={4: 10, 8: 2, 10: 7}),
+    "ななつぼし": E(55, 9, spr="star", elem="light", fmin=0, fmax=0, w=0, star=True, slow=True),
+    "ゆめくい": E(260, 14, 2, spr="yume", elem="dark", fmin=0, fmax=0, w=0, ai="boss", boss=True),
 }
 
 
@@ -167,31 +227,88 @@ ITEMS = {
     "ふきとばしの杖": dict(k="staff", v="blow", desc="ふると魔法弾。当たった敵を遠くへ吹き飛ばす", price=160),
     "かなしばりの杖": dict(k="staff", v="para", desc="ふると魔法弾。当たった敵をしばらく動けなくする", price=180),
     "真空斬りの巻物": dict(k="scroll", v=20, desc="部屋の敵すべてに固定ダメージ（20+階数）", price=180),
-    "こん棒": dict(k="weapon", v=2, desc="武器 攻撃力+2", price=60),
-    "カタナ": dict(k="weapon", v=5, desc="武器 攻撃力+5", price=250),
-    "どうたぬき": dict(k="weapon", v=7, desc="武器 攻撃力+7", price=400),
-    "ドラゴンキラー": dict(k="weapon", v=10, desc="武器 攻撃力+10", price=700),
-    "まさむね": dict(k="weapon", v=14, desc="武器 攻撃力+14", price=1100),
-    "かぐらのつるぎ": dict(k="weapon", v=19, desc="武器 攻撃力+19", price=1600),
-    "木甲の盾": dict(k="shield", v=3, desc="盾 防御力+3", price=60),
-    "青銅甲の盾": dict(k="shield", v=6, desc="盾 防御力+6", price=300),
-    "重装の盾": dict(k="shield", v=10, desc="盾 防御力+10", price=700),
-    "ドラゴンシールド": dict(k="shield", v=14, desc="盾 防御力+14", price=1100),
-    "かがみの盾": dict(k="shield", v=19, desc="盾 防御力+19", price=1600),
+    "武器強化の巻物": dict(k="scroll", v="wup", desc="よむと、そうびしている剣の修正値が+1される", price=250),
+    "盾強化の巻物": dict(k="scroll", v="sup", desc="よむと、そうびしている盾の修正値が+1される", price=250),
+    "合成の巻物": dict(k="scroll", v="fuse", desc="よむと、剣か盾に印と修正値を合成できる。合成できる個数は、よむたびにランダム", price=200),
     "ギタン": dict(k="gold", v=0, desc="お金", price=0),
 }
+# ---- 剣と盾 ----
+# 素の剣・盾: 5段階。基礎値が高く、空き印は少なめ。拾うたびに基礎値と印の数がランダムに決まる
+# 特性の剣・盾: 最初から印が1つ付いている。基礎値は低め。空き印が多い。印を合成して育てる
+WTIER = [("弱い剣", (1, 3), 4), ("普通の剣", (3, 6), 4), ("強い剣", (6, 10), 3),
+         ("かなり強い剣", (10, 15), 1.5), ("最強の剣", (15, 20), 0.6)]
+STIER = [("弱い盾", (1, 3), 4), ("普通の盾", (3, 6), 4), ("強い盾", (6, 10), 3),
+         ("かなり強い盾", (10, 15), 1.5), ("最強の盾", (15, 20), 0.6)]
+WTRAIT = [("炎の剣", "fire"), ("水の剣", "water"), ("木の剣", "wood"), ("闇の剣", "dark"), ("光の剣", "light"),
+          ("大鎌", "scythe"), ("連撃の剣", "renda"), ("会心の剣", "crit"), ("眠りの剣", "sleep"),
+          ("混乱の剣", "confuse"), ("龍の剣", "dragon")]
+STRAIT = [("炎の盾", "res_fire"), ("水の盾", "res_water"), ("木の盾", "res_wood"), ("闇の盾", "res_dark"),
+          ("光の盾", "res_light"), ("龍の盾", "res_dragon"), ("魔法の盾", "res_mage"),
+          ("ハラヘラズの盾", "hara")]
+PLAIN_SLOTS = ([0, 1, 2], [5, 3, 2])     # 素の装備の印の数と、その出やすさ
+TRAIT_BASE = (1, 5)                        # 特性装備の基礎値（低め）
+TRAIT_SLOTS = (2, 4)                       # 特性装備の印の合計枠（最初の印を含む）
+PLAIN_PRICE = [60, 150, 300, 700, 1200]
+for _i, (_n, _r, _w) in enumerate(WTIER):
+    ITEMS[_n] = dict(k="weapon", v=_r[1], rng=_r, mark=None, price=PLAIN_PRICE[_i], desc="剣")
+for _i, (_n, _r, _w) in enumerate(STIER):
+    ITEMS[_n] = dict(k="shield", v=_r[1], rng=_r, mark=None, price=PLAIN_PRICE[_i], desc="盾")
+for _n, _m in WTRAIT:
+    ITEMS[_n] = dict(k="weapon", v=TRAIT_BASE[1], rng=TRAIT_BASE, mark=_m, price=250, desc="剣")
+for _n, _m in STRAIT:
+    ITEMS[_n] = dict(k="shield", v=TRAIT_BASE[1], rng=TRAIT_BASE, mark=_m, price=250, desc="盾")
+
+# 印。剣の印と盾の印。同じ印は重ねられる（属性の印だけは1つの剣に1種類）
+ELEMS = {"fire": ("火", 8), "water": ("水", 12), "wood": ("木", 11), "dark": ("闇", 13), "light": ("光", 10)}
+BEATS = {"fire": "wood", "water": "fire", "wood": "water", "dark": "light", "light": "dark"}
+MARKS = {
+    "fire": ("火", "火属性。木に2倍・水に半分"),
+    "water": ("水", "水属性。火に2倍・木に半分"),
+    "wood": ("木", "木属性。水に2倍・火に半分"),
+    "dark": ("闇", "闇属性。光に2倍"),
+    "light": ("光", "光属性。闇に2倍"),
+    "scythe": ("大鎌", "前方3方向を同時に攻撃"),
+    "renda": ("連撃", "30%で2回攻撃（重ねると確率UP）"),
+    "crit": ("会心", "25%で3倍ダメージ（重ねると確率UP）"),
+    "sleep": ("眠り", "15%で敵を5ターン眠らせる"),
+    "confuse": ("混乱", "15%で敵を6ターン混乱させる"),
+    "dragon": ("龍特攻", "龍族（ドラゴン）に2.5倍（重ねると+1.5倍ずつ）"),
+    "res_fire": ("耐火", "火の敵から受けるダメージ-35%"),
+    "res_water": ("耐水", "水の敵から受けるダメージ-35%"),
+    "res_wood": ("耐木", "木の敵から受けるダメージ-35%"),
+    "res_dark": ("耐闇", "闇の敵から受けるダメージ-35%"),
+    "res_light": ("耐光", "光の敵から受けるダメージ-35%"),
+    "res_dragon": ("龍耐", "龍族（ドラゴン）から受けるダメージ-40%"),
+    "res_mage": ("魔耐", "魔法使いの魔法を40%でかき消す"),
+    "hara": ("腹持", "満腹度のへりが半分になる"),
+}
+
+
+def elem_mult(att, dfn):
+    """攻撃の属性 att が、防ぐ側の属性 dfn にどれだけ効くか。"""
+    if not att or not dfn:
+        return 1.0
+    if BEATS[att] == dfn:
+        return 2.0
+    if att in ("fire", "water", "wood") and BEATS[dfn] == att:
+        return 0.5
+    return 1.0
+
+
 # 出現テーブル（名前: 重み）。階数には依存しない。強い物は「出にくい」だけ
 ITEM_TABLE = {
     "薬草": 24, "弟切草": 6, "ドラゴン草": 5, "いのちの草": 2, "ちからの草": 2,
     "おにぎり": 15, "大きなおにぎり": 5,
-    "いかずちの杖": 6, "ふきとばしの杖": 5, "かなしばりの杖": 5, "真空斬りの巻物": 6,
-    "こん棒": 4, "カタナ": 4, "どうたぬき": 3, "ドラゴンキラー": 2, "まさむね": 1.2, "かぐらのつるぎ": 0.6,
-    "木甲の盾": 4, "青銅甲の盾": 4, "重装の盾": 2, "ドラゴンシールド": 1.2, "かがみの盾": 0.6,
+    "いかずちの杖": 6, "ふきとばしの杖": 5, "かなしばりの杖": 5, "真空斬りの巻物": 6, "合成の巻物": 5,
+    "武器強化の巻物": 4, "盾強化の巻物": 4,
 }
+for _n, _r, _w in WTIER + STIER:
+    ITEM_TABLE[_n] = _w
+for _n, _m in WTRAIT + STRAIT:
+    ITEM_TABLE[_n] = 1.0
 # ダンジョンごとの調整（重みの上書き。0で出なくなる）。バランスが壊れたらここで絞る
 ITEM_OVERRIDE = {}
-RARE_GEAR = ["どうたぬき", "ドラゴンキラー", "まさむね", "かぐらのつるぎ",
-             "青銅甲の盾", "重装の盾", "ドラゴンシールド", "かがみの盾"]
+RARE_GEAR = ["かなり強い剣", "最強の剣", "かなり強い盾", "最強の盾"]
 VERB = {"herb": "のむ", "dgrass": "のむ", "seed": "のむ", "food": "たべる", "staff": "ふる", "scroll": "よむ"}
 SORT_ORDER = {"weapon": 0, "shield": 1, "food": 2, "herb": 3, "seed": 4, "dgrass": 5, "scroll": 6, "staff": 7,
               "gold": 9}
@@ -215,12 +332,30 @@ def wchoice(pairs):
 
 def make_item(name):
     it = {"name": name, "n": 1, "eq": False}
-    k = ITEMS[name]["k"]
+    d = ITEMS[name]
+    k = d["k"]
     if k == "staff":
         it["n"] = random.randint(3, 5)
     elif k == "gold":
         it["n"] = random.randint(15, 40)
+    elif k in ("weapon", "shield"):
+        it["base"] = random.randint(*d["rng"])
+        it["plus"] = random.choices([0, 1, 2, 3], [55, 25, 13, 7])[0]
+        if d["mark"]:
+            it["marks"] = [d["mark"]]
+            it["slots"] = random.randint(*TRAIT_SLOTS)
+        else:
+            it["marks"] = []
+            it["slots"] = random.choices(PLAIN_SLOTS[0], PLAIN_SLOTS[1])[0]
     return it
+
+
+def is_gear(it):
+    return ITEMS[it["name"]]["k"] in ("weapon", "shield")
+
+
+def gear_val(it):
+    return it["base"] + it["plus"]
 
 
 def item_label(it):
@@ -229,7 +364,26 @@ def item_label(it):
         return f"{it['name']}[{it['n']}]"
     if k == "gold":
         return f"{it['n']}ギタン"
+    if k in ("weapon", "shield"):
+        return f"{it['name']}+{gear_val(it)}"
     return it["name"]
+
+
+def item_desc(it):
+    """持ち物欄の説明。剣と盾は、数値と印を毎回つくる。"""
+    d = ITEMS[it["name"]]
+    if d["k"] not in ("weapon", "shield"):
+        return d["desc"]
+    kind = "攻撃力" if d["k"] == "weapon" else "防御力"
+    head = f"{kind}+{gear_val(it)}（基礎{it['base']} 修正{it['plus']:+d}）  印{len(it['marks'])}/{it['slots']}"
+    if it["marks"]:
+        names = "・".join(MARKS[m][0] for m in it["marks"])
+        head += f"\n印: {names}"
+        for m in dict.fromkeys(it["marks"]):
+            head += f"\n{MARKS[m][0]}: {MARKS[m][1]}"
+    else:
+        head += "\n印はまだ付いていない"
+    return head
 
 
 # ---------------------------------------------------------------------------
@@ -619,6 +773,13 @@ def tw(s):
     return FONT.text_width(s)
 
 
+def fit_text(s, width):
+    """枠に収まらない文字を後ろから削る（アイテム名が長すぎたときの保険）。"""
+    while s and tw(s) > width:
+        s = s[:-1]
+    return s
+
+
 def wrap(s, width):
     lines = []
     for para in s.split("\n"):
@@ -673,8 +834,8 @@ class Enemy:
         self.hp = self.mhp = int(d["hp"] * (1 + 0.10 * lv))
         self.atk = d["atk"] + lv // 2
         self.df = d["df"]
-        self.phys = d["phys"]
-        self.mag = d["mag"]
+        self.elem = d.get("elem")
+        self.race = d.get("race")
         self.acts = d.get("acts", 1)
         self.slow = d.get("slow", False)
         self.erratic = d.get("erratic", 0)
@@ -687,13 +848,16 @@ class Enemy:
         self.flash = 0
         self.lx = self.ly = 0
         self.para = 0
+        self.conf = 0               # 混乱しているターン数
         self.sleep = False
+        self.guard = False          # 番人の部屋の敵（1体起きると全員起きる）
         self.stolen = False
         self.loot = 0
         self.face = -1
         self.phase = 0
         self.timer = 0
         self.pal = d.get("pal")
+        self.drop = d.get("drop")   # 倒したとき高確率で落とす道具
 
 
 class Player:
@@ -737,7 +901,9 @@ class Room:
         self.gates = set()
         self.chest = None
         self.solved = False
-        self.shop = {}              # pos -> {"item": it} or {"card": cid}, "price"
+        self.gtype = "boxes"        # ギミックの種類: boxes(箱押し) / guard(番人) / slide(矢印の床)
+        self.arrows = {}            # (x, y) -> (dx, dy)  乗るとその向きにすべる床
+        self.shop = {}            # pos -> {"item": it} or {"card": cid}, "price"
 
 
 # ---------------------------------------------------------------------------
@@ -883,6 +1049,9 @@ class Game:
         FONT = pyxel.Font(find_font())
         load_sprites()
         init_sounds()
+        for nm in ITEMS:      # 2列表示に収まらない長い名前を、開発中に気づけるようにする
+            if len(nm) > ITEM_NAME_MAX:
+                print(f"[警告] アイテム名が長すぎます({len(nm)}文字>{ITEM_NAME_MAX}): {nm}")
         self.state = "title"
         self.frame = 0
         self.help = False
@@ -928,7 +1097,6 @@ class Game:
         self.dash_t = 0
         self.need_release = True
         self.inv_sel = 0
-        self.inv_top = 0
         self.sk_sel = 0
         self.anim_t = 0
         self.slide = None
@@ -943,7 +1111,8 @@ class Game:
             if n == "いかずちの杖":
                 it["n"] = 3
             p.inv.append(it)
-        club = make_item("こん棒")
+        club = make_item("弱い剣")
+        club["base"], club["plus"], club["slots"], club["marks"] = 2, 0, 1, []
         club["eq"] = True
         p.inv.insert(0, club)
         p.gold = 20
@@ -1037,8 +1206,9 @@ class Game:
         if not last:
             if f >= 3 and cand and random.random() < (0.4 if deep else 0.25):
                 self.rooms[cand.pop()].kind = "shop"
-            if f >= 2 and cand and random.random() < 0.3:
-                self.rooms[cand.pop()].kind = "gimmick"
+            for chance in (0.45, 0.2):      # ギミック部屋は1フロアに最大2つ
+                if f >= 2 and cand and random.random() < chance:
+                    self.rooms[cand.pop()].kind = "gimmick"
             if f >= 3 and cand and random.random() < 0.22:
                 self.rooms[cand.pop()].kind = "mhouse"
             if f >= 4:
@@ -1157,6 +1327,14 @@ class Game:
         r.shop[spots[5]] = {"card": cid, "price": int(price * self.price_scale() / 10) * 10}
 
     def setup_gimmick(self, r):
+        r.gtype = random.choice(["boxes", "guard", "slide"])
+        if r.gtype == "guard":
+            self.setup_guard(r)
+            return
+        if r.gtype == "slide" and SLIDE_LAYOUTS:
+            self.setup_slide(r)
+            return
+        r.gtype = "boxes"
         layouts = [
             ([(6, 4), (14, 8)], [(4, 9), (16, 3)], [(8, 8), (12, 4)]),
             ([(6, 8), (13, 4), (7, 3)], [(4, 4), (16, 9), (15, 2)], [(8, 9), (12, 3)]),
@@ -1172,6 +1350,36 @@ class Game:
         r.gates = {(10 + dx, 6 + dy) for dx, dy in DIRS8}
         for (x, y) in list(r.gates) + [r.chest]:
             r.tiles[y][x] = "."
+
+    def setup_guard(self, r):
+        """番人の部屋：眠っている敵が宝箱を守っている。となりに立つと起きやすい。
+        階が深いほど番人が増え、4体では安全なマスがなくなる。"""
+        r.chest = (10, 6)
+        r.solved = True
+        n = 2 + (self.floor >= 10) + (self.floor >= 20)
+        pool = enemy_pool(self.floor)
+        for pos in [(9, 5), (11, 7), (9, 7), (11, 5)][:n]:
+            e = self.spawn(wchoice(pool), pos, self.floor)
+            e.sleep = True
+            e.guard = True
+            r.enemies.append(e)
+
+    def setup_slide(self, r):
+        """一方通行の床：矢印の床に乗ると、その向きにすべる。"""
+        pillars, arrows = random.choice(SLIDE_LAYOUTS)
+        # 扉の位置が上下対称なので、上下反転しても同じように解ける
+        flip = random.random() < 0.5
+
+        def fy(y):
+            return RH - 1 - y if flip else y
+
+        for x, y in pillars:
+            r.tiles[fy(y)][x] = "#"
+        r.arrows = {(k[0], fy(k[1])): (v[0], -v[1] if flip else v[1]) for k, v in arrows}
+        for (x, y) in list(r.arrows) + [(10, 6)]:
+            r.tiles[y][x] = "."
+        r.chest = (10, 6)
+        r.solved = True
 
     def free_tile(self, r, avoid_doors=False, center=False, near=None):
         cands = []
@@ -1274,9 +1482,9 @@ class Game:
             if it["eq"]:
                 k = ITEMS[it["name"]]["k"]
                 if k == "weapon":
-                    s["atk"] += ITEMS[it["name"]]["v"]
+                    s["atk"] += gear_val(it)
                 elif k == "shield":
-                    s["df"] += ITEMS[it["name"]]["v"]
+                    s["df"] += gear_val(it)
         for cid in p.cards:
             for k, v in CARDS[cid]["fx"].items():
                 if k == "def":
@@ -1287,6 +1495,39 @@ class Game:
 
     def ncard(self, cid):
         return self.p.cards.count(cid)
+
+    def gear_marks(self, kind):
+        """そうび中の剣("weapon")か盾("shield")の印を、{印: 個数} で返す。"""
+        out = {}
+        for it in self.p.inv:
+            if it["eq"] and ITEMS[it["name"]]["k"] == kind:
+                for m in it["marks"]:
+                    out[m] = out.get(m, 0) + 1
+        return out
+
+    def wmark(self, m):
+        return self.gear_marks("weapon").get(m, 0)
+
+    def smark(self, m):
+        return self.gear_marks("shield").get(m, 0)
+
+    def weapon_elem(self):
+        for m in self.gear_marks("weapon"):
+            if m in ELEMS:
+                return m
+        return None
+
+    def resist_mult(self, e):
+        """そうび中の盾の印による、敵ごとの被ダメージ倍率。"""
+        sm = self.gear_marks("shield")
+        if not sm:
+            return 1.0
+        m = 1.0
+        if e.elem:
+            m *= 0.65 ** sm.get("res_" + e.elem, 0)
+        if e.race == "dragon":
+            m *= 0.6 ** sm.get("res_dragon", 0)
+        return m
 
     def clamp_player(self):
         st = self.stats()
@@ -1320,6 +1561,7 @@ class Game:
             return
         if st == "play" and pyxel.btnp(pyxel.KEY_I):
             self.info_page = 0
+            self.info_cache = None
             self.state = "info"
             self.dash = None
             return
@@ -1532,8 +1774,35 @@ class Game:
         if self.enemy_at(nx, ny):
             return False
         p.x, p.y = nx, ny
+        self.ride_arrows()
         self.on_step()
         return True
+
+    def ride_arrows(self):
+        """矢印の床に乗ったら、その向きにすべる。矢印を踏むたびに向きが変わり、
+        壁・柱・宝箱・扉の手前・すべり上限のどれかで止まる。"""
+        r = self.room
+        p = self.p
+        if not r.arrows or (p.x, p.y) not in r.arrows:
+            return
+        x, y = p.x, p.y
+        last = None
+        n = 0
+        while (x, y) in r.arrows and n < SLIDE_LIMIT:
+            dx, dy = r.arrows[(x, y)]
+            nx, ny = x + dx, y + dy
+            if not (0 < nx < RW - 1 and 0 < ny < RH - 1):
+                break
+            if not self.passable(r, nx, ny) or self.enemy_at(nx, ny):
+                break
+            x, y = nx, ny
+            last = (dx, dy)
+            n += 1
+        if last:
+            p.x, p.y = x, y
+            p.fx, p.fy = last
+            self.dash = None
+            sfx(0)
 
     def push_box(self, bx, by, dx, dy):
         p = self.p
@@ -1639,7 +1908,14 @@ class Game:
             elif new.kind == "dark":
                 self.msg("暗い部屋だ…。まわりしか見えない", 13)
             elif new.kind == "gimmick":
-                self.msg("箱を押して、光る床を全部うめよう（出入りでやりなおし）", 11)
+                if new.gtype == "guard":
+                    self.msg("番人が眠っている…。となりに立つと起きやすい", 11)
+                    self.msg("そっと宝箱をあけよう（番人は1体起きると全員起きる）", 11)
+                elif new.gtype == "slide":
+                    self.msg("矢印の床に乗ると、その向きにすべる", 11)
+                    self.msg("うまくすべって、宝箱のそばで止まろう", 11)
+                else:
+                    self.msg("箱を押して、光る床を全部うめよう（出入りでやりなおし）", 11)
         if new.kind == "mhouse" and new.mh_state == 0:
             self.start_mhouse(new)
         self.on_step()
@@ -1698,17 +1974,60 @@ class Game:
 
     def wake(self, e):
         e.sleep = False
+        if e.guard:
+            self.wake_guards(self.room)
+
+    def wake_guards(self, r):
+        """番人は1体が目を覚ますと、全員が目を覚ます。"""
+        woke = False
+        for g in r.enemies:
+            if g.guard and g.sleep:
+                g.sleep = False
+                woke = True
+                self.popup(g.x, g.y, "!", 10)
+        if woke:
+            self.msg("番人たちが目を覚ました！", 8)
+            sfx(13)
+
+    def attack_targets(self):
+        """通常攻撃が当たる敵。大鎌の印があれば、前方3方向（正面と、左右ななめ前）。"""
+        p = self.p
+        if not self.wmark("scythe"):
+            e = self.facing_enemy()
+            return [e] if e else []
+        r = self.room
+        i = DIRS8.index((p.fx, p.fy))
+        out = []
+        for k in (0, 1, -1):
+            dx, dy = DIRS8[(i + k) % 8]
+            if not self.diag_ok(r, p.x, p.y, dx, dy):
+                continue
+            e = self.enemy_at(p.x + dx, p.y + dy)
+            if e and e not in out:
+                out.append(e)
+        return out
 
     def player_attack(self):
         p = self.p
         p.lx, p.ly = p.fx * 5, p.fy * 5
-        e = self.facing_enemy()
-        if not e:
+        targets = self.attack_targets()
+        if not targets:
             sfx(0)
             return
         st = self.stats()
-        hits = 2 if random.random() < 0.3 * self.ncard("renda") else 1
-        immune_said = False
+        for e in targets:
+            if e in self.room.enemies:
+                self.melee_hit(e, st)
+
+    def melee_hit(self, e, st):
+        p = self.p
+        hits = 2 if random.random() < min(1.0, 0.3 * (self.ncard("renda") + self.wmark("renda"))) else 1
+        crit_p = min(1.0, 0.25 * (self.ncard("crit") + self.wmark("crit")))
+        el = self.weapon_elem()
+        mult = elem_mult(el, e.elem)
+        if e.race == "dragon" and self.wmark("dragon"):
+            mult *= 1 + 1.5 * self.wmark("dragon")
+        said = False
         for h in range(hits):
             if e.hp <= 0 or e not in self.room.enemies:
                 break
@@ -1717,30 +2036,37 @@ class Game:
                 sfx(0)
                 self.wake(e)
                 continue
-            dmg = 0
+            raw = max(1, round(st["atk"] * random.uniform(0.87, 1.13) - e.df))
             crit = False
-            if e.phys:
-                dmg = max(1, round(st["atk"] * random.uniform(0.87, 1.13) - e.df))
-                if random.random() < 0.25 * self.ncard("crit"):
-                    dmg *= 3
-                    crit = True
-            elif not immune_said:
-                self.msg(f"{e.kind}に物理攻撃は効かない！", 13)
-                immune_said = True
-            if self.ncard("magsword") and e.mag:
+            if random.random() < crit_p:
+                raw *= 3
+                crit = True
+            dmg = max(1, round(raw * mult))
+            if self.ncard("magsword"):
                 dmg += max(1, st["mag"] * self.ncard("magsword"))
-            if dmg <= 0:
-                self.popup(e.x, e.y, "×", 13)
-                sfx(2)
-                self.wake(e)
-                continue
             if crit:
                 self.msg("会心の一撃！", 10)
                 self.shake = 6
-            self.hurt_enemy(e, dmg, 10 if crit else 7)
-            if e.phys and self.ncard("drain"):
+            if mult != 1.0 and not said:
+                said = True
+                if mult > 1:
+                    self.msg(f"{e.kind}に効果ばつぐん！", 10)
+                else:
+                    self.msg(f"{e.kind}には効きにくい…（いまひとつ）", 13)
+            self.hurt_enemy(e, dmg, 10 if (crit or mult > 1) else (13 if mult < 1 else 7))
+            if self.ncard("drain"):
                 heal = max(1, dmg * self.ncard("drain") // 4)
                 p.hp = min(st["mhp"], p.hp + heal)
+            # 印の効果：眠り・混乱（ボスには効かない）
+            if e in self.room.enemies and e.hp > 0 and e.ai != "boss":
+                if random.random() < min(1.0, 0.15 * self.wmark("sleep")):
+                    e.para = max(e.para, 5)
+                    self.popup(e.x, e.y, "ZZZ", 12, 4)
+                    self.msg(f"{e.kind}は眠ってしまった！", 12)
+                if random.random() < min(1.0, 0.15 * self.wmark("confuse")):
+                    e.conf = max(e.conf, 6)
+                    self.popup(e.x, e.y, "?", 14, 4)
+                    self.msg(f"{e.kind}は混乱した！", 14)
         if hits == 2 and e.hp > 0:
             self.msg("れんげき！", 11)
 
@@ -1782,6 +2108,8 @@ class Game:
         if e.loot:
             drop = make_item("ギタン")
             drop["n"] = e.loot
+        elif e.drop and random.random() < DROP_RATE:
+            drop = make_item(e.drop)
         elif e.boss or e.star:
             drop = make_item(random.choice(RARE_GEAR + ["弟切草", "ドラゴン草", "いのちの草"]))
         elif random.random() < 0.45:
@@ -1801,11 +2129,25 @@ class Game:
             if pos:
                 r.items[pos] = drop
 
-    def damage_player(self, dmg, cause, evadable=True):
+    def face_attacker(self, e):
+        """攻撃を受けたら、その敵の方向を向く。斜めから殴られたとき、別の向きへ
+        空振りし続けて負けるのを防ぐ（かわした・ミスされたときも向く）。"""
         p = self.p
+        fx, fy = sign(e.x - p.x), sign(e.y - p.y)
+        if fx or fy:
+            p.fx, p.fy = fx, fy
+
+    def damage_player(self, dmg, cause, evadable=True, src=None):
+        p = self.p
+        if src is not None:
+            self.face_attacker(src)
         if evadable and random.random() < 0.12 * self.ncard("evade"):
             self.popup(p.x, p.y, "かわした", 11)
             return 0
+        if src is not None:
+            m = self.resist_mult(src)
+            if m < 1.0:
+                dmg = max(1, round(dmg * m))
         dmg = max(1, dmg - 2 * self.ncard("skin"))
         p.hp -= dmg
         p.flash = 10
@@ -1846,7 +2188,7 @@ class Game:
         self.fturn += 1
         p = self.p
         st = self.stats()
-        step = 20 if self.ncard("hara") else 10
+        step = 20 if (self.ncard("hara") or self.smark("hara")) else 10
         if self.turn % step == 0 and p.full > 0:
             p.full -= 1
             if p.full == 20:
@@ -1905,17 +2247,94 @@ class Game:
 
     # ---------------------------------------------------------- かいせつ（開発用）
     def upd_info(self):
-        if menu_p(KL) or menu_p(KR):
-            self.info_page = 1 - self.info_page
+        total = len(self.info_pages())
+        if menu_p(KL):
+            self.info_page = (self.info_page - 1) % total
+        if menu_p(KR):
+            self.info_page = (self.info_page + 1) % total
         if pressed(KX) or pressed(KZ) or pyxel.btnp(pyxel.KEY_I):
             self.state = "play"
             self.need_release = True
 
-    def info_lines(self):
+    def info_pages(self):
+        """かいせつページの全ページ。開いている間は中身が変わらないので、作ったものを使い回す。"""
+        if getattr(self, "info_cache", None) is None:
+            self.info_cache = [self.info_lines(0), self.info_lines(1)] + self.info_gear_pages() + self.info_card_pages()
+        return self.info_cache
+
+    def info_gear_pages(self):
+        """属性・剣と盾・印・合成のかいせつ。"""
+        by = {k: [] for k in ELEMS}
+        for nm, d in ENEMIES.items():
+            if d.get("elem") and d["w"] > 0:
+                by[d["elem"]].append(nm)
+        p1 = [("【属性】", 10),
+              ("敵は火・水・木・闇・光のどれか。名前の横に色の点と文字が出る。", 7),
+              ("水→火に強い  木→水に強い  火→木に強い  闇⇄光は、おたがいに強い", 12),
+              ("剣の属性が有利なら2倍、不利（水木火の三すくみ）なら半分のダメージ。", 7),
+              ("魔法とアイテムの固定ダメージは、属性とは関係なく通る。", 7),
+              ("ゆめくいは、5ターンごとに属性がかわる。", 7),
+              ("【敵の属性】", 10)]
+        for k, (lab, col) in ELEMS.items():
+            p1.append((f"{lab}: " + " ".join(by[k]), col))
+        p2 = [("【剣と盾】", 10),
+              ("素の剣・盾は5段階（弱い・普通・強い・かなり強い・最強）。基礎値が高く、印の枠は0〜2。", 7),
+              ("特性の剣・盾は、はじめから印が1つ。基礎値は低め（1〜5）で、印の枠は2〜4。", 7),
+              ("基礎値・枠・修正値（+0〜+3）は、拾うたびにランダム。床では中身はわからず、拾うとわかる。", 7),
+              ("修正値は、武器強化・盾強化の巻物（そうび中のものが+1）と、合成でも上がる。", 7),
+              ("基礎値が高く、枠も多いものを引いたら当たり。強い印を合成していく。", 11),
+              ("【合成の巻物】", 10),
+              ("よむと、土台にする剣（盾）と、素材にする同じ種類のものをえらぶ。", 7),
+              ("素材にできる数は、よむたびにランダム（1〜3個）。素材の修正値が土台に足される。", 7),
+              ("素材の印は、土台の空き枠にうつる。枠が足りない印と、2つめの属性はうつせない。素材はなくなる。", 7),
+              ("合成の巻物は、床・お店のほか、「合成マン」（黄色いマムル）が70%で落とす。", 11)]
+        p3 = [("【剣の印】", 10)]
+        for k in ("fire", "water", "wood", "dark", "light", "scythe", "renda", "crit", "sleep", "confuse", "dragon"):
+            p3.append((f"{MARKS[k][0]}: {MARKS[k][1]}", ELEMS[k][1] if k in ELEMS else 7))
+        p3.append(("れんげき・かいしんは、同じ名前のカードと重なる。眠り・混乱はボスに効かない。", 12))
+        p4 = [("【盾の印】", 10)]
+        for k in ("res_fire", "res_water", "res_wood", "res_dark", "res_light", "res_dragon", "res_mage", "hara"):
+            p4.append((f"{MARKS[k][0]}: {MARKS[k][1]}", 7))
+        p4.append(("同じ印を重ねると、軽減は1つごとに重なる（耐属性は×0.65、龍耐は×0.6）。", 12))
+        p4.append(("盾の印も、合成で素材の盾からうつせる。", 12))
+        return [p1, p2, p3, p4]
+
+    def info_card_pages(self):
+        """全カードの効果と重なり方を、種類ごとにページへ詰める。"""
+        per_page = 19
+        entries = []
+        for t, (lab, _lc) in TYPE_LABEL.items():
+            cards = sorted([(k, c) for k, c in CARDS.items() if c["t"] == t], key=lambda kv: kv[1]["r"])
+            first = True
+            for k, c in cards:
+                name = "★" * c["r"] + " " + c["name"]
+                if c["t"] == "skill":
+                    name += f"  MP{c['fx']['mp']}"
+                if c["g"]:
+                    name += "  ガチャ限定"
+                e = []
+                if first:
+                    e.append((f"◆ {lab}", 10, ""))
+                    first = False
+                e.append((name, RARITY_COL[c["r"]], STACK_NOTE.get(k, "")))
+                for line in wrap(c["desc"], 276):
+                    e.append(("　" + line, 7, ""))
+                entries.append(e)
+        pages, cur = [], []
+        for e in entries:
+            if cur and len(cur) + len(e) > per_page:
+                pages.append(cur)
+                cur = []
+            cur += e
+        if cur:
+            pages.append(cur)
+        return pages
+
+    def info_lines(self, page):
         p = self.p
         st = self.stats()
         n = self.ncard
-        if self.info_page == 1:
+        if page == 1:
             return [
                 ("【MPのしくみ】", 10),
                 ("最大MPははじめ8。MPタンクで+6ずつ（重なる）", 7),
@@ -1938,7 +2357,7 @@ class Game:
             (f"攻撃{st['atk']}  防御{st['df']}  魔力{st['mag']}  最大HP{st['mhp']}  最大MP{st['mmp']}", 7),
             (f"MP回復: {1 / r:.1f}ターンに1  （カードなしは5.0）", 12),
             (f"HP回復: 全快まで約{150 / sp:.0f}ターン", 11),
-            (f"満腹: {20 if n('hara') else 10}ターンで1%へる", 9),
+            (f"満腹: {20 if (n('hara') or self.smark('hara')) else 10}ターンで1%へる", 9),
             (f"風: このフロア{self.fturn}/{FLOOR_TURN_LIMIT}ターン（あと{left}）", 9),
             (f"カード: 次まであと{self.kill_need - self.kill_prog}体（必要{self.kill_need}体、強敵は3体ぶん）", 11),
             ("", 7),
@@ -1973,12 +2392,19 @@ class Game:
     def draw_info(self):
         x, y, w, h = 4, 26, W - 8, 244
         self.panel(x, y, w, h)
+        pages = self.info_pages()
+        self.info_page %= len(pages)
         yy = y + 6
-        for s, col in self.info_lines():
+        for ent in pages[self.info_page]:
+            s, col = ent[0], ent[1]
+            rs = ent[2] if len(ent) > 2 else ""
             for line in wrap(s, w - 16):
                 txt(x + 8, yy, line, col)
+                if rs:
+                    txt(x + w - 8 - tw(rs), yy, rs, 11)
+                    rs = ""
                 yy += 11
-        txt(x + 8, y + h - 14, f"←→:ページ切替 {self.info_page + 1}/2     I / X:とじる", 13)
+        txt(x + 8, y + h - 14, f"←→:ページ切替 {self.info_page + 1}/{len(pages)}     I / X:とじる", 13)
 
     def start_card_intro(self, ids, src):
         """敵をたおした直後にいきなりカード画面へ飛ばず、「目標たっせい！」の間を挟む。"""
@@ -2021,8 +2447,16 @@ class Game:
             if e.para > 0:
                 e.para -= 1
                 continue
+            if e.conf > 0:
+                e.conf -= 1
+                self.confused_step(e)
+                continue
             if e.sleep:
-                if cheb(e.x, e.y, p.x, p.y) <= 2 and random.random() < 0.5:
+                if e.guard:
+                    # 番人は、となり合ったときだけ（40%）起きる
+                    if cheb(e.x, e.y, p.x, p.y) <= 1 and random.random() < 0.4:
+                        self.wake_guards(r)
+                elif cheb(e.x, e.y, p.x, p.y) <= 2 and random.random() < 0.5:
                     e.sleep = False
                     self.popup(e.x, e.y, "!", 10)
                 continue
@@ -2035,16 +2469,32 @@ class Game:
                     break
                 self.enemy_step(e, dist)
 
+    def confused_step(self, e):
+        """混乱中の敵は、でたらめな方向へ歩く（攻撃はしない）。"""
+        r = self.room
+        p = self.p
+        opts = []
+        for ddx, ddy in DIRS8:
+            nx, ny = e.x + ddx, e.y + ddy
+            if not self.can_step(r, e.x, e.y, ddx, ddy):
+                continue
+            if self.enemy_at(nx, ny) or (nx, ny) == (p.x, p.y):
+                continue
+            if r.locked and (nx, ny) in DOORS.values():
+                continue
+            opts.append((nx, ny, ddx))
+        if opts:
+            nx, ny, ddx = random.choice(opts)
+            e.x, e.y = nx, ny
+            if ddx:
+                e.face = 1 if ddx > 0 else -1
+
     def boss_tick(self, e):
         e.timer += 1
         if e.timer % 5 == 1:
             e.phase = 1 - e.phase
-            if e.phase == 1:
-                e.phys, e.mag = False, True
-                self.msg("ゆめくいの体がゆらめいた！物理が効かない！", 9)
-            else:
-                e.phys, e.mag = True, False
-                self.msg("ゆめくいの体がかたくなった！魔法が効かない！", 6)
+            e.elem = random.choice([k for k in ELEMS if k != e.elem])
+            self.msg(f"ゆめくいの体が{ELEMS[e.elem][0]}の色にかわった！", ELEMS[e.elem][1])
             self.flash_screen = 4
         r = self.room
         if e.timer % 11 == 0 and len(r.enemies) < 4:
@@ -2082,7 +2532,12 @@ class Game:
                                col=col, kind="ball", fx=0, fy=0))
         sfx(13)
         self.msg(f"{e.kind}は{name}！", 8)
-        self.damage_player(dmg, cause)
+        if e.race == "mage" and random.random() < min(1.0, 0.4 * self.smark("res_mage")):
+            self.face_attacker(e)
+            self.msg("魔法の盾が、魔法をかき消した！", 12)
+            self.popup(p.x, p.y, "かき消し", 12)
+            return
+        self.damage_player(dmg, cause, src=e)
 
     def enemy_step(self, e, dist):
         p = self.p
@@ -2114,12 +2569,13 @@ class Game:
                 return
             e.lx, e.ly = dx * 5, dy * 5
             if random.random() < 0.1:
+                self.face_attacker(e)
                 self.popup(p.x, p.y, "MISS", 13)
                 return
             st = self.stats()
             dmg = max(1, round(e.atk * random.uniform(0.87, 1.13) - st["df"] * 0.5))
-            got = self.damage_player(dmg, f"{e.kind}にやられた")
-            if got and self.state != "gameover" and e.phys and random.random() < 0.3 * self.ncard("counter"):
+            got = self.damage_player(dmg, f"{e.kind}にやられた", src=e)
+            if got and self.state != "gameover" and random.random() < 0.3 * self.ncard("counter"):
                 self.msg("はんげき！", 11)
                 self.hurt_enemy(e, got, 11)
             return
@@ -2358,12 +2814,7 @@ class Game:
             end, e = self.line_target()
             delay = self.shoot(end, 9)
             if e:
-                if e.mag:
-                    self.hurt_enemy(e, max(1, round((st["mag"] * 2 + 4) * random.uniform(0.9, 1.1))), 9, delay)
-                else:
-                    self.popup(e.x, e.y, "×", 13, delay)
-                    self.msg(f"{e.kind}に魔法は効かない！", 13)
-                    self.wake(e)
+                self.hurt_enemy(e, max(1, round((st["mag"] * 2 + 4) * random.uniform(0.9, 1.1))), 9, delay)
         elif cid == "heal":
             v = st["mag"] * 3 + 12
             p.hp = min(st["mhp"], p.hp + v)
@@ -2374,10 +2825,6 @@ class Game:
             self.flash_screen = 6 if cid == "thunder" else 10
             targets = list(self.room.enemies)
             for e in targets:
-                if not e.mag:
-                    self.popup(e.x, e.y, "×", 13)
-                    self.wake(e)
-                    continue
                 base = st["mag"] + 6 if cid == "thunder" else st["mag"] * 2 + 16
                 self.hurt_enemy(e, max(1, round(base * random.uniform(0.9, 1.1))), 10)
             if not targets:
@@ -2394,11 +2841,7 @@ class Game:
                     break
                 e = self.enemy_at(x, y)
                 if e:
-                    if e.phys:
-                        self.hurt_enemy(e, max(1, round(st["atk"] * 1.3 * random.uniform(0.9, 1.1) - e.df)), 7)
-                    else:
-                        self.popup(e.x, e.y, "×", 13)
-                        self.wake(e)
+                    self.hurt_enemy(e, max(1, round(st["atk"] * 1.3 * random.uniform(0.9, 1.1) - e.df)), 7)
         elif cid == "hoshi":
             p.lx, p.ly = p.fx * 7, p.fy * 7
             e = self.facing_enemy()
@@ -2461,6 +2904,10 @@ class Game:
             self.inv_sel = (self.inv_sel - 1) % n
         if menu_p(KD):
             self.inv_sel = (self.inv_sel + 1) % n
+        if menu_p(KL) and self.inv_sel >= INV_ROWS:
+            self.inv_sel -= INV_ROWS
+        if menu_p(KR) and self.inv_sel < INV_ROWS and n > INV_ROWS:
+            self.inv_sel = min(self.inv_sel + INV_ROWS, n - 1)
         if pressed(KX):
             self.state = "play"
             self.need_release = True
@@ -2559,6 +3006,25 @@ class Game:
             self.burst(p.x, p.y, 10, 10)
             sfx(9)
             return True
+        if k == "scroll" and d["v"] in ("wup", "sup"):
+            self.remove_item(it)
+            kind = "weapon" if d["v"] == "wup" else "shield"
+            tgt = next((o for o in p.inv if o["eq"] and ITEMS[o["name"]]["k"] == kind), None)
+            self.msg(f"{name}をよんだ！", 12)
+            if not tgt:
+                self.msg("しかし、そうびしているものがない。巻物は燃えてしまった。", 13)
+            else:
+                tgt["plus"] += 1
+                self.flash_screen = 6
+                self.burst(p.x, p.y, 10, 12)
+                sfx(9)
+                self.msg(f"{item_label(tgt)}になった！（修正値+1）", 11)
+                self.clamp_player()
+            return True
+        if k == "scroll" and d["v"] == "fuse":
+            self.remove_item(it)
+            self.msg(f"{name}をよんだ！", 12)
+            return self.start_fuse()
         if k == "scroll":
             self.remove_item(it)
             self.msg(f"{name}をよんだ！", 12)
@@ -2595,6 +3061,165 @@ class Game:
                     self.blow(e)
             return True
         return False
+
+    # ---------------------------------------------------------------- 合成
+    def start_fuse(self):
+        """合成の巻物。合成できる個数は、よむたびにランダム（1〜3個）。"""
+        gear = [g for g in self.p.inv if is_gear(g)]
+        self.fuse_n = random.choice([1, 1, 2, 2, 3])
+        if len(gear) < 2:
+            self.msg("しかし、合成できる剣や盾が2つ以上ない…。巻物は燃えてしまった。", 13)
+            return True
+        self.flash_screen = 6
+        self.msg(f"光がうずまく…！ {self.fuse_n}個まで合成できる。", 12)
+        self.fuse_base = None
+        self.fuse_picks = []
+        self.fuse_sel = 0
+        self.state = "fuse_base"
+        self.need_release = True
+        return False
+
+    def fuse_candidates(self):
+        gear = [g for g in self.p.inv if is_gear(g)]
+        if self.fuse_base is None:
+            return gear
+        k = ITEMS[self.fuse_base["name"]]["k"]
+        return [g for g in gear if g is not self.fuse_base and ITEMS[g["name"]]["k"] == k]
+
+    def fuse_end(self):
+        self.state = "play"
+        self.need_release = True
+        self.end_turn()
+
+    def upd_fuse_base(self):
+        cands = self.fuse_candidates()
+        n = len(cands)
+        self.fuse_sel = min(self.fuse_sel, n - 1)
+        if menu_p(KU):
+            self.fuse_sel = (self.fuse_sel - 1) % n
+        if menu_p(KD):
+            self.fuse_sel = (self.fuse_sel + 1) % n
+        if pressed(KX):
+            self.msg("合成をやめた。巻物の力は消えてしまった。", 13)
+            self.fuse_end()
+        elif pressed(KZ):
+            base = cands[self.fuse_sel]
+            self.fuse_base = base
+            if not self.fuse_candidates():
+                k = "剣" if ITEMS[base["name"]]["k"] == "weapon" else "盾"
+                self.msg(f"素材にできる{k}がない。巻物の力は消えてしまった。", 13)
+                self.fuse_end()
+                return
+            self.fuse_picks = []
+            self.fuse_sel = 0
+            self.state = "fuse_mat"
+            self.need_release = True
+
+    def upd_fuse_mat(self):
+        cands = self.fuse_candidates()
+        n = len(cands) + 1        # 最後の行は「けってい」
+        self.fuse_sel = min(self.fuse_sel, n - 1)
+        if menu_p(KU):
+            self.fuse_sel = (self.fuse_sel - 1) % n
+        if menu_p(KD):
+            self.fuse_sel = (self.fuse_sel + 1) % n
+        if pressed(KX):
+            self.msg("合成をやめた。巻物の力は消えてしまった。", 13)
+            self.fuse_end()
+        elif pressed(KZ):
+            if self.fuse_sel < len(cands):
+                g = cands[self.fuse_sel]
+                if g in self.fuse_picks:
+                    self.fuse_picks.remove(g)
+                elif len(self.fuse_picks) < self.fuse_n:
+                    self.fuse_picks.append(g)
+                else:
+                    sfx(2)
+                self.need_release = True
+            elif self.fuse_picks:
+                self.do_fuse()
+            else:
+                sfx(2)
+                self.need_release = True
+
+    def do_fuse(self):
+        base = self.fuse_base
+        mats = list(self.fuse_picks)
+        add = sum(m["plus"] for m in mats)
+        moved, lost = [], []
+        for m in mats:
+            for mk in m["marks"]:
+                has_elem = any(x in ELEMS for x in base["marks"])
+                if len(base["marks"]) >= base["slots"]:
+                    lost.append(mk)
+                elif mk in ELEMS and has_elem:
+                    lost.append(mk)
+                else:
+                    base["marks"].append(mk)
+                    moved.append(mk)
+        base["plus"] += add
+        for m in mats:
+            if m in self.p.inv:
+                self.p.inv.remove(m)
+        self.inv_sel = max(0, min(self.inv_sel, len(self.p.inv) - 1))
+        self.flash_screen = 8
+        self.burst(self.p.x, self.p.y, 12, 16)
+        sfx(9)
+        self.msg(f"{item_label(base)}に{len(mats)}個を合成した！", 10)
+        if add:
+            self.msg(f"修正値が+{add}された。", 11)
+        if moved:
+            self.msg("印がうつった: " + "・".join(MARKS[m][0] for m in moved), 11)
+        if lost:
+            self.msg("枠が足りず（同じ属性は1つだけ）うつせなかった: " + "・".join(MARKS[m][0] for m in lost), 13)
+        self.clamp_player()
+        self.fuse_end()
+
+    def draw_fuse(self):
+        p = self.p
+        cands = self.fuse_candidates()
+        rows = len(cands) + (1 if self.state == "fuse_mat" else 0)
+        vis = 12
+        top = max(0, min(self.fuse_sel - vis + 3, rows - vis))
+        x, y, w = 4, ROOM_Y + 4, W - 8
+        h = 36 + 12 * min(rows, vis)
+        self.panel(x, y, w, h)
+        if self.state == "fuse_base":
+            txt(x + 8, y + 5, f"合成の巻物：土台にする剣か盾をえらぶ（最大{self.fuse_n}個まで素材にできる）", 10)
+        else:
+            txt(x + 8, y + 5, f"素材をえらぶ（{len(self.fuse_picks)}/{self.fuse_n}）  土台: {item_label(self.fuse_base)}", 10)
+        txt(x + 8, y + 17, "Z:えらぶ  X:やめる（巻物は消える）", 13)
+        for i in range(top, min(rows, top + vis)):
+            yy = y + 30 + (i - top) * 12
+            if i == self.fuse_sel:
+                pyxel.rect(x + 3, yy - 1, w - 6, 12, 5)
+            if i < len(cands):
+                g = cands[i]
+                mark = "●" if g in self.fuse_picks else " "
+                e = "E" if g["eq"] else " "
+                names = "・".join(MARKS[m][0] for m in g["marks"]) or "なし"
+                txt(x + 6, yy, mark, 10)
+                txt(x + 16, yy, e, 10)
+                txt(x + 26, yy, fit_text(item_label(g), 110), 7)
+                txt(x + 140, yy, fit_text(f"印{len(g['marks'])}/{g['slots']}  {names}", w - 150), 12)
+            else:
+                txt(x + 26, yy, "▶ けってい（合成する）", 10 if self.fuse_picks else 13)
+        if rows > vis:
+            txt(x + w - 20, y + 5, "▼" if top + vis < rows else "▲", 13)
+        # 選んでいる装備の説明
+        dx, dy, dw, dh = 4, 204, W - 8, 66
+        self.panel(dx, dy, dw, dh)
+        if self.fuse_sel < len(cands):
+            g = cands[self.fuse_sel]
+            txt(dx + 8, dy + 4, item_label(g), 10)
+            for i, line in enumerate(wrap(item_desc(g), dw - 16)[:4]):
+                txt(dx + 8, dy + 16 + i * 11, line, 7)
+        else:
+            lines = [f"土台: {item_label(self.fuse_base)}  印{len(self.fuse_base['marks'])}/{self.fuse_base['slots']}",
+                     "素材の修正値が土台に足され、素材の印が空き枠にうつる。",
+                     "空き枠が足りない印・同じ属性の印はうつせない。素材はなくなる。"]
+            for i, line in enumerate(lines):
+                txt(dx + 8, dy + 8 + i * 12, line, 7)
 
     def blow(self, e):
         p = self.p
@@ -2639,9 +3264,13 @@ class Game:
 
     def sort_inv(self):
         p = self.p
+        def power(it):
+            if is_gear(it):
+                return gear_val(it)
+            v = ITEMS[it["name"]]["v"]
+            return v if isinstance(v, int) else 0
         p.inv.sort(key=lambda it: (0 if it["eq"] else 1, SORT_ORDER.get(ITEMS[it["name"]]["k"], 8),
-                                   -ITEMS[it["name"]]["v"] if isinstance(ITEMS[it["name"]]["v"], int) else 0,
-                                   it["name"]))
+                                   -power(it), it["name"]))
         self.inv_sel = 0
         self.msg("もちものをせいとんした。", 13)
 
@@ -2798,6 +3427,8 @@ class Game:
             self.draw_skills()
         elif st == "info":
             self.draw_info()
+        elif st in ("fuse_base", "fuse_mat"):
+            self.draw_fuse()
         elif st == "card_intro":
             self.draw_card_intro()
         elif st == "cards":
@@ -2816,7 +3447,7 @@ class Game:
             sp = self.room.shop.get(self.shop_pos)
             if sp:
                 nm = item_label(sp["item"]) if "item" in sp else "カード「" + CARDS[sp["card"]]["name"] + "」"
-                desc = ITEMS[sp["item"]["name"]]["desc"] if "item" in sp else "★" * CARDS[sp["card"]]["r"] + " " + TYPE_LABEL[CARDS[sp["card"]]["t"]][0]
+                desc = item_desc(sp["item"]).replace("\n", " ") if "item" in sp else "★" * CARDS[sp["card"]]["r"] + " " + TYPE_LABEL[CARDS[sp["card"]]["t"]][0]
                 self.box_msg([f"{nm}  {sp['price']}ギタン", desc[:26], f"（もちギタン {self.p.gold}）",
                               "Z:買う（カードは中身を見てから）  X:やめる"])
         elif st == "stairs":
@@ -2857,6 +3488,15 @@ class Game:
             px, py = x * TS, ROOM_Y + y * TS
             pyxel.rect(px + 1, py + 1, TS - 2, TS - 2, 2)
             pyxel.rectb(px + 1, py + 1, TS - 2, TS - 2, 14)
+        for (x, y), (ax, ay) in r.arrows.items():
+            px, py = x * TS, ROOM_Y + y * TS
+            pyxel.rect(px + 1, py + 1, TS - 2, TS - 2, 5)
+            pyxel.rectb(px + 1, py + 1, TS - 2, TS - 2, 12)
+            cx, cy = px + 8, py + 8
+            col = 10 if (self.frame // 12 + x + y) % 2 else 9
+            pyxel.tri(cx + ax * 5, cy + ay * 5,
+                      cx - ax * 3 - ay * 4, cy - ay * 3 + ax * 4,
+                      cx - ax * 3 + ay * 4, cy - ay * 3 - ax * 4, col)
         for (x, y) in r.switches:
             px, py = x * TS, ROOM_Y + y * TS
             on = (x, y) in r.boxes
@@ -3017,7 +3657,7 @@ class Game:
         if e.spr in ("ghost", "musha"):
             y += pyxel.sin(self.frame * 6) * 1.5
         if e.ai == "boss":
-            col = 9 if not e.phys else 6
+            col = ELEMS[e.elem][1] if e.elem else 9
             rr = 9 + (self.frame // 5) % 3
             pyxel.circb(x + 8, y + 8, rr, col)
             pyxel.circb(x + 8, y + 8, rr + 2, col)
@@ -3036,48 +3676,29 @@ class Game:
         if e.sleep:
             zz = (self.frame // 20) % 2
             txt(x + 11, y - 6 - zz, "z", 12)
-        if not e.phys:
-            pyxel.rect(x, y, 4, 4, 9)
-            pyxel.rectb(x, y, 4, 4, 1)
-        if not e.mag:
-            pyxel.rect(x + 12, y, 4, 4, 2)
-            pyxel.rectb(x + 12, y, 4, 4, 7)
+        if e.elem:
+            pyxel.rect(x, y, 4, 4, ELEMS[e.elem][1])
+            pyxel.rectb(x, y, 4, 4, 7 if e.elem == "dark" else 1)
+        if e.conf > 0 and (self.frame // 8) % 2 == 0:
+            txt(x + 11, y - 6, "?", 14)
         if e.hp < e.mhp:
             pyxel.rect(x + 1, y + 15, 14, 2, 1)
             pyxel.rect(x + 1, y + 15, max(1, 14 * e.hp // e.mhp), 2, 11 if e.hp * 3 > e.mhp else 8)
 
     def draw_item_icon(self, name, px, py):
+        """床に落ちているときの見た目は、種類ごとに全部同じ。拾ってから中身がわかる。"""
         k = ITEMS[name]["k"]
         cx, cy = px + 8, py + 8
-        if k == "herb":
-            col = 3 if name == "薬草" else 11
-            pyxel.elli(cx - 5, cy - 3, 10, 6, col)
+        if k in ("herb", "seed", "dgrass"):
+            pyxel.elli(cx - 5, cy - 3, 10, 6, 3)
             pyxel.line(cx - 4, cy, cx + 4, cy, 1)
-            if name == "弟切草":
-                pyxel.pset(cx, cy - 2, 8)
-        elif k == "seed":
-            col = 14 if ITEMS[name]["v"] == "mhp" else 9
-            pyxel.elli(cx - 5, cy - 3, 10, 6, col)
-            pyxel.line(cx - 4, cy, cx + 4, cy, 1)
-            pyxel.pset(cx, cy - 2, 7)
-        elif k == "dgrass":
-            pyxel.elli(cx - 5, cy - 3, 10, 6, 8)
-            pyxel.line(cx - 4, cy, cx + 4, cy, 1)
-            pyxel.pset(cx, cy - 2, 10)
         elif k == "food":
-            s = 6 if name == "おにぎり" else 7
-            pyxel.tri(cx, cy - s, cx - s, cy + s - 2, cx + s, cy + s - 2, 7)
-            pyxel.rect(cx - 3, cy + 1, 6, s - 2, 1)
-        elif k == "arrow":
-            col = 9 if name == "木の矢" else 13
-            pyxel.line(cx - 5, cy + 5, cx + 4, cy - 4, col)
-            pyxel.line(cx - 4, cy + 5, cx + 5, cy - 4, col)
-            pyxel.pset(cx + 5, cy - 5, 7)
-            pyxel.line(cx - 6, cy + 3, cx - 4, cy + 6, 7)
+            pyxel.tri(cx, cy - 6, cx - 6, cy + 4, cx + 6, cy + 4, 7)
+            pyxel.rect(cx - 3, cy + 1, 6, 4, 1)
         elif k == "staff":
             pyxel.line(cx - 5, cy + 6, cx + 3, cy - 4, 4)
             pyxel.line(cx - 4, cy + 6, cx + 4, cy - 4, 9)
-            pyxel.circ(cx + 4, cy - 5, 2, {"blow": 12, "para": 10, "bolt": 7}[ITEMS[name]["v"]])
+            pyxel.circ(cx + 4, cy - 5, 2, 7)
         elif k == "scroll":
             pyxel.rect(cx - 5, cy - 4, 10, 8, 7)
             pyxel.rect(cx - 6, cy - 5, 2, 10, 4)
@@ -3085,19 +3706,13 @@ class Game:
             pyxel.line(cx - 3, cy - 1, cx + 2, cy - 1, 13)
             pyxel.line(cx - 3, cy + 1, cx + 2, cy + 1, 13)
         elif k == "weapon":
-            if name == "こん棒":
-                pyxel.line(cx - 5, cy + 5, cx + 3, cy - 3, 4)
-                pyxel.circ(cx + 3, cy - 3, 2, 9)
-            else:
-                col = {"ドラゴンキラー": 10, "まさむね": 12, "かぐらのつるぎ": 14}.get(name, 7)
-                pyxel.line(cx - 4, cy + 4, cx + 5, cy - 5, col)
-                pyxel.line(cx - 3, cy + 4, cx + 5, cy - 4, 13)
-                pyxel.line(cx - 6, cy + 1, cx - 1, cy + 6, 10)
-                pyxel.line(cx - 6, cy + 6, cx - 5, cy + 5, 4)
+            pyxel.line(cx - 4, cy + 4, cx + 5, cy - 5, 7)
+            pyxel.line(cx - 3, cy + 4, cx + 5, cy - 4, 13)
+            pyxel.line(cx - 6, cy + 1, cx - 1, cy + 6, 10)
+            pyxel.line(cx - 6, cy + 6, cx - 5, cy + 5, 4)
         elif k == "shield":
-            col = {"木甲の盾": 9, "青銅甲の盾": 10, "重装の盾": 6, "ドラゴンシールド": 8}.get(name, 12)
-            pyxel.rect(cx - 5, cy - 5, 10, 8, col)
-            pyxel.tri(cx - 5, cy + 3, cx + 4, cy + 3, cx, cy + 7, col)
+            pyxel.rect(cx - 5, cy - 5, 10, 8, 12)
+            pyxel.tri(cx - 5, cy + 3, cx + 4, cy + 3, cx, cy + 7, 12)
             pyxel.rectb(cx - 5, cy - 5, 10, 8, 1)
             pyxel.pset(cx, cy - 1, 7)
         elif k == "gold":
@@ -3132,10 +3747,11 @@ class Game:
             s = f"{e.hp}"
             txt(x, 13, s, 7 if front else 13)
             x += tw(s) + 4
-            txt(x, 13, "物", 9 if e.phys else 13)
-            txt(x + 10, 13, "○" if e.phys else "×", 7 if e.phys else 8)
-            txt(x + 20, 13, "魔", 6 if e.mag else 13)
-            txt(x + 30, 13, "○" if e.mag else "×", 7 if e.mag else 8)
+            if e.elem:
+                txt(x, 13, ELEMS[e.elem][0], ELEMS[e.elem][1])
+                mm = elem_mult(self.weapon_elem(), e.elem)
+                if mm != 1.0:
+                    txt(x + 10, 13, "◎" if mm > 1 else "△", 10 if mm > 1 else 13)
         txt(164, 13, f"カード{len(p.cards)}/{CARD_MAX}", 14)
         # 次のカードまでの撃破数（強敵は3体ぶん）
         txt(228, 13, f"あと{self.kill_need - self.kill_prog}体", 11)
@@ -3185,43 +3801,36 @@ class Game:
 
     def draw_inv(self):
         p = self.p
-        x, y, w = 150, ROOM_Y + 4, 166
         n = len(p.inv)
+        # 20個を一度に見せるため、10行ずつの2列にする（左の列が先、あふれたら右の列）
+        cols = (n - 1) // INV_ROWS + 1
         rows = min(n, INV_ROWS)
-        # 持ち物が多いときはリストをスクロールさせる（画面からはみ出さない）
-        top = getattr(self, "inv_top", 0)
-        top = max(0, min(top, self.inv_sel, n - rows))
-        if self.inv_sel >= top + rows:
-            top = self.inv_sel - rows + 1
-        self.inv_top = top
+        w = max(cols * INV_COLW + 8, 160)
+        x, y = W - 4 - w, ROOM_Y + 4
         h = 20 + 12 * rows
         self.panel(x, y, w, h)
         txt(x + 6, y + 4, f"もちもの {n}/{INV_MAX}", 10)
         txt(x + w - tw("C:せいとん") - 6, y + 4, "C:せいとん", 13)
-        for row in range(rows):
-            i = top + row
-            it = p.inv[i]
+        for i, it in enumerate(p.inv):
+            c, row = divmod(i, INV_ROWS)
+            cx = x + 4 + c * INV_COLW
             yy = y + 17 + row * 12
             if i == self.inv_sel:
-                pyxel.rect(x + 3, yy - 1, w - 6, 12, 5)
-            txt(x + 6, yy, "E" if it["eq"] else " ", 10)
-            txt(x + 14, yy, item_label(it), 7)
-        if top > 0:
-            txt(x + w - 14, y + 17, "▲", 10)
-        if top + rows < n:
-            txt(x + w - 14, y + 17 + (rows - 1) * 12, "▼", 10)
+                pyxel.rect(cx, yy - 1, INV_COLW - 2, 12, 5)
+            txt(cx + 2, yy, "E" if it["eq"] else " ", 10)
+            txt(cx + 12, yy, fit_text(item_label(it), INV_COLW - 16), 7)
         # 説明は画面下の固定欄に出す（長い説明も3行まで読める）
         it = p.inv[self.inv_sel]
-        dx, dy, dw, dh = 4, 208, W - 8, 60
+        dx, dy, dw, dh = 4, 204, W - 8, 66
         self.panel(dx, dy, dw, dh)
-        txt(dx + 8, dy + 5, item_label(it), 10)
-        for i, line in enumerate(wrap(ITEMS[it["name"]]["desc"], dw - 16)[:3]):
-            txt(dx + 8, dy + 18 + i * 11, line, 7)
+        txt(dx + 8, dy + 4, item_label(it), 10)
+        for i, line in enumerate(wrap(item_desc(it), dw - 16)[:4]):
+            txt(dx + 8, dy + 16 + i * 11, line, 7)
         if self.state == "inv_act":
             acts = self.item_actions(it)
             ah = 8 + 12 * len(acts)
             ax = x - 62
-            ay = min(y + 17 + (self.inv_sel - top) * 12, dy - 4 - ah)
+            ay = min(y + 17 + (self.inv_sel % INV_ROWS) * 12, dy - 4 - ah)
             self.panel(ax, ay, 58, ah)
             for i, a in enumerate(acts):
                 if i == self.act_sel:
