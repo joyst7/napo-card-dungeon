@@ -28,6 +28,7 @@ from collections import deque
 
 PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJ)
+os.environ.setdefault("NAPO_MUTE", "1")   # 高速で動かすので、音は出さない
 import pyxel  # noqa: E402,F401
 import main  # noqa: E402
 from main import CARDS, DIRS8, DOORS, DIR_VEC, ITEMS, RH, RW, cheb, gear_val, is_gear, sign  # noqa: E402

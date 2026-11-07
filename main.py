@@ -750,8 +750,14 @@ def init_sounds():
     S[14].set("e2c2a1", "s", "765", "f", 12)         # ボス
 
 
+# 環境変数 NAPO_MUTE があると音を出さない（ボットやテストで高速に動かすとき、効果音が鳴りつづけてうるさいため）
+MUTE = bool(os.environ.get("NAPO_MUTE"))
+
+
 def sfx(n, ch=None):
     """効果音。チャンネル0〜2はBGMと共用なので、鳴り終わったらBGMにもどす（resume）。3番はBGMが使わない。"""
+    if MUTE:
+        return
     if ch is None:
         ch = {0: 0, 1: 0, 2: 0, 3: 1, 4: 2, 5: 2, 6: 2, 7: 2, 8: 3, 9: 1, 10: 1,
               11: 1, 12: 2, 13: 3, 14: 2}.get(n, 0)
@@ -1626,7 +1632,7 @@ class Game:
         return "dungeon"
 
     def update_bgm(self):
-        want = self.want_bgm() if self.bgm_on else None
+        want = self.want_bgm() if (self.bgm_on and not MUTE) else None
         if want == self.bgm_cur:
             return
         self.bgm_cur = want

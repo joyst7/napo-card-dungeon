@@ -14,7 +14,8 @@ if len(sys.argv) > 1:
 bad = []
 for f in files:
     t0 = time.time()
-    r = subprocess.run([sys.executable, f], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, f], capture_output=True, text=True,
+                       env=dict(os.environ, NAPO_MUTE="1"))   # テスト中は音を出さない
     ok = r.returncode == 0 and "ALL_OK" in r.stdout
     print(f"{'OK ' if ok else 'NG '} {os.path.basename(f)}  ({time.time() - t0:.0f}秒)")
     if not ok:
