@@ -1318,6 +1318,11 @@ class Game:
             elif self.anim_t > 40 and pressed(KX):
                 self.state = "title"
             return
+        if st == "play" and pyxel.btnp(pyxel.KEY_I):
+            self.info_page = 0
+            self.state = "info"
+            self.dash = None
+            return
         if self.need_release:
             if not held(KZ + KX + KC):
                 self.need_release = False
@@ -1897,6 +1902,83 @@ class Game:
         if self.pending_cards > 0 and self.state == "play":
             self.pending_cards -= 1
             self.start_card_intro(self.draw_cards(3, self.level_rates(), False), "level")
+
+    # ---------------------------------------------------------- かいせつ（開発用）
+    def upd_info(self):
+        if menu_p(KL) or menu_p(KR):
+            self.info_page = 1 - self.info_page
+        if pressed(KX) or pressed(KZ) or pyxel.btnp(pyxel.KEY_I):
+            self.state = "play"
+            self.need_release = True
+
+    def info_lines(self):
+        p = self.p
+        st = self.stats()
+        n = self.ncard
+        if self.info_page == 1:
+            return [
+                ("【MPのしくみ】", 10),
+                ("最大MPははじめ8。MPタンクで+6ずつ（重なる）", 7),
+                ("MPが回復するのは時間だけ。ふつうは5ターンで1。", 7),
+                ("めいそう・せいれいのかごは、1枚ごとに回復が3倍ぶん（+2倍）足される。", 7),
+                ("階段・アイテム・レベルアップではMPは回復しない。", 12),
+                ("【カードのかさなり】", 10),
+                ("ステータス系は足し算（ちから+2と+4で+6、オールアップ2枚で各+6）。", 7),
+                ("パッシブは、確率や倍率が1枚ごとに増える。ただし回数は増えず、れんげきは何枚でも最大2回攻撃。", 7),
+                ("わざ（魔法）は同じカードを持っても効果は同じ。枠をとるだけ。", 7),
+                ("はらもちは重ねても同じ。ふたつめのいのちは1枚につき1回。", 7),
+                ("【風】", 10),
+                (f"1フロア{FLOOR_TURN_LIMIT}ターンで風に飛ばされる。あと200・100・30ターンで知らせが出る。", 9),
+            ]
+        r = 0.2 * (1 + 2 * n("spirit") + 2 * n("medit"))
+        sp = 1 + 2 * n("spirit")
+        left = FLOOR_TURN_LIMIT - self.fturn
+        L = [
+            ("【いまの状態】（開発用）", 10),
+            (f"攻撃{st['atk']}  防御{st['df']}  魔力{st['mag']}  最大HP{st['mhp']}  最大MP{st['mmp']}", 7),
+            (f"MP回復: {1 / r:.1f}ターンに1  （カードなしは5.0）", 12),
+            (f"HP回復: 全快まで約{150 / sp:.0f}ターン", 11),
+            (f"満腹: {20 if n('hara') else 10}ターンで1%へる", 9),
+            (f"風: このフロア{self.fturn}/{FLOOR_TURN_LIMIT}ターン（あと{left}）", 9),
+            (f"カード: 次まであと{self.kill_need - self.kill_prog}体（必要{self.kill_need}体、強敵は3体ぶん）", 11),
+            ("", 7),
+            ("【持っているカードの重なり】", 10),
+        ]
+        rows = []
+        if n("renda"):
+            rows.append(f"れんげき×{n('renda')}: 2回攻撃{min(100, 30 * n('renda'))}%（最大2回）")
+        if n("crit"):
+            rows.append(f"かいしん×{n('crit')}: 会心{min(100, 25 * n('crit'))}%（3倍のまま）")
+        if n("drain"):
+            rows.append(f"きゅうけつ×{n('drain')}: 物理ダメージの{25 * n('drain')}%回復")
+        if n("skin"):
+            rows.append(f"かたいひふ×{n('skin')}: 受けるダメージ-{2 * n('skin')}（最低1）")
+        if n("counter"):
+            rows.append(f"はんげき×{n('counter')}: 反撃{min(100, 30 * n('counter'))}%")
+        if n("evade"):
+            rows.append(f"みかわし×{n('evade')}: 回避{min(100, 12 * n('evade'))}%")
+        if n("staffer"):
+            rows.append(f"つえの名手×{n('staffer')}: 杖と巻物のダメージ×{1 + 0.5 * n('staffer'):g}")
+        if n("goldrush"):
+            rows.append(f"ゴールドラッシュ×{n('goldrush')}: ギタン×{1 + n('goldrush')}")
+        if n("magsword"):
+            rows.append(f"まほうけん×{n('magsword')}: 通常攻撃に魔法ダメージ+{st['mag'] * n('magsword')}")
+        if n("soul"):
+            rows.append(f"ふたつめのいのち×{n('soul')}: あと{n('soul')}回復活")
+        if not rows:
+            rows.append("まだ重なる効果のカードがない")
+        L += [(s, 7) for s in rows]
+        return L
+
+    def draw_info(self):
+        x, y, w, h = 4, 26, W - 8, 244
+        self.panel(x, y, w, h)
+        yy = y + 6
+        for s, col in self.info_lines():
+            for line in wrap(s, w - 16):
+                txt(x + 8, yy, line, col)
+                yy += 11
+        txt(x + 8, y + h - 14, f"←→:ページ切替 {self.info_page + 1}/2     I / X:とじる", 13)
 
     def start_card_intro(self, ids, src):
         """敵をたおした直後にいきなりカード画面へ飛ばず、「目標たっせい！」の間を挟む。"""
@@ -2714,6 +2796,8 @@ class Game:
             self.draw_inv()
         elif st == "skills":
             self.draw_skills()
+        elif st == "info":
+            self.draw_info()
         elif st == "card_intro":
             self.draw_card_intro()
         elif st == "cards":
@@ -3054,7 +3138,7 @@ class Game:
             txt(x + 30, 13, "○" if e.mag else "×", 7 if e.mag else 8)
         txt(164, 13, f"カード{len(p.cards)}/{CARD_MAX}", 14)
         # 次のカードまでの撃破数（強敵は3体ぶん）
-        txt(222, 13, f"あと{self.kill_need - self.kill_prog}体", 11)
+        txt(228, 13, f"あと{self.kill_need - self.kill_prog}体", 11)
         mx, my = 275, 1
         for (gx, gy), rr in self.rooms.items():
             x = mx + gx * 11
@@ -3406,7 +3490,7 @@ class Game:
             ("オレンジの矢印の扉は一方通行（戻れない）", 9),
             ("ガチャは深い階ほどいいものが出る（ガチャ限定あり）", 14),
             ("1フロア600ターンで風に飛ばされる", 7),
-            ("H / X:とじる", 13),
+            ("I:かいせつページ（開発用）  H / X:とじる", 13),
         ]
         for i, (s, c) in enumerate(lines):
             txt(x + 10, y + 6 + i * 12.4, s, c)
