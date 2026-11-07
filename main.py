@@ -128,7 +128,7 @@ CARDS = {
     "flare": C("ギガフレア", 3, "skill", {"mp": 12}, "部屋の敵すべてに大魔法（魔力×2+16）"),
     "crit": C("かいしん", 3, "passive", {}, "通常攻撃が25%で会心（3倍）になる"),
     "magsword": C("まほうけん", 3, "passive", {},
-                  "通常攻撃に魔力ぶんの魔法ダメージが乗る。物理が効かない敵にも届く", g=True),
+                  "通常攻撃に魔力ぶんの魔法ダメージが乗る", g=True),
     "spirit": C("せいれいのかご", 3, "passive", {}, "HPとMPの自然回復がとても速くなる", g=True),
     "soul": C("ふたつめのいのち", 3, "passive", {}, "倒れた時1度だけHP半分で復活。使うと消える", g=True),
 }
@@ -229,12 +229,12 @@ ITEMS = {
     "真空斬りの巻物": dict(k="scroll", v=20, desc="部屋の敵すべてに固定ダメージ（20+階数）", price=180),
     "武器強化の巻物": dict(k="scroll", v="wup", desc="よむと、そうびしている剣の修正値が+1される", price=250),
     "盾強化の巻物": dict(k="scroll", v="sup", desc="よむと、そうびしている盾の修正値が+1される", price=250),
-    "合成の巻物": dict(k="scroll", v="fuse", desc="よむと、剣か盾に印と修正値を合成できる。合成できる個数は、よむたびにランダム", price=200),
+    "合成の巻物": dict(k="scroll", v="fuse", desc="よむと、剣か盾にルーンと修正値を合成できる。合成できる個数は、よむたびにランダム", price=200),
     "ギタン": dict(k="gold", v=0, desc="お金", price=0),
 }
 # ---- 剣と盾 ----
-# 素の剣・盾: 5段階。基礎値が高く、空き印は少なめ。拾うたびに基礎値と印の数がランダムに決まる
-# 特性の剣・盾: 最初から印が1つ付いている。基礎値は低め。空き印が多い。印を合成して育てる
+# 素の剣・盾: 5段階。基礎値が高く、空きルーンは少なめ。拾うたびに基礎値とルーンの数がランダムに決まる
+# 特性の剣・盾: 最初からルーンが1つ付いている。基礎値は低め。空きルーンが多い。ルーンを合成して育てる
 WTIER = [("弱い剣", (1, 3), 4), ("普通の剣", (3, 6), 4), ("強い剣", (6, 10), 3),
          ("かなり強い剣", (10, 15), 1.5), ("最強の剣", (15, 20), 0.6)]
 STIER = [("弱い盾", (1, 3), 4), ("普通の盾", (3, 6), 4), ("強い盾", (6, 10), 3),
@@ -245,9 +245,9 @@ WTRAIT = [("炎の剣", "fire"), ("水の剣", "water"), ("木の剣", "wood"), 
 STRAIT = [("炎の盾", "res_fire"), ("水の盾", "res_water"), ("木の盾", "res_wood"), ("闇の盾", "res_dark"),
           ("光の盾", "res_light"), ("龍の盾", "res_dragon"), ("魔法の盾", "res_mage"),
           ("ハラヘラズの盾", "hara")]
-PLAIN_SLOTS = ([0, 1, 2], [5, 3, 2])     # 素の装備の印の数と、その出やすさ
+PLAIN_SLOTS = ([0, 1, 2], [5, 3, 2])     # 素の装備のルーンの数と、その出やすさ
 TRAIT_BASE = (1, 5)                        # 特性装備の基礎値（低め）
-TRAIT_SLOTS = (2, 4)                       # 特性装備の印の合計枠（最初の印を含む）
+TRAIT_SLOTS = (2, 4)                       # 特性装備のルーンの合計枠（最初のルーンを含む）
 PLAIN_PRICE = [60, 150, 300, 700, 1200]
 for _i, (_n, _r, _w) in enumerate(WTIER):
     ITEMS[_n] = dict(k="weapon", v=_r[1], rng=_r, mark=None, price=PLAIN_PRICE[_i], desc="剣")
@@ -258,7 +258,7 @@ for _n, _m in WTRAIT:
 for _n, _m in STRAIT:
     ITEMS[_n] = dict(k="shield", v=TRAIT_BASE[1], rng=TRAIT_BASE, mark=_m, price=250, desc="盾")
 
-# 印。剣の印と盾の印。同じ印は重ねられる（属性の印だけは1つの剣に1種類）
+# ルーン。剣のルーンと盾のルーン。同じルーンは重ねられる（属性のルーンだけは1つの剣に1種類）
 ELEMS = {"fire": ("火", 8), "water": ("水", 12), "wood": ("木", 11), "dark": ("闇", 13), "light": ("光", 10)}
 BEATS = {"fire": "wood", "water": "fire", "wood": "water", "dark": "light", "light": "dark"}
 MARKS = {
@@ -365,24 +365,24 @@ def item_label(it):
     if k == "gold":
         return f"{it['n']}ギタン"
     if k in ("weapon", "shield"):
-        return f"{it['name']}+{gear_val(it)}"
+        return f"{it['name']}{it['plus']:+d}" if it["plus"] else it["name"]
     return it["name"]
 
 
 def item_desc(it):
-    """持ち物欄の説明。剣と盾は、数値と印を毎回つくる。"""
+    """持ち物欄の説明。剣と盾は、数値とルーンを毎回つくる。"""
     d = ITEMS[it["name"]]
     if d["k"] not in ("weapon", "shield"):
         return d["desc"]
     kind = "攻撃力" if d["k"] == "weapon" else "防御力"
-    head = f"{kind}+{gear_val(it)}（基礎{it['base']} 修正{it['plus']:+d}）  印{len(it['marks'])}/{it['slots']}"
+    head = f"{kind} {gear_val(it)}（基礎{it['base']} 修正{it['plus']:+d}）  ルーン{len(it['marks'])}/{it['slots']}"
     if it["marks"]:
         names = "・".join(MARKS[m][0] for m in it["marks"])
-        head += f"\n印: {names}"
+        head += f"\nルーン: {names}"
         for m in dict.fromkeys(it["marks"]):
             head += f"\n{MARKS[m][0]}: {MARKS[m][1]}"
     else:
-        head += "\n印はまだ付いていない"
+        head += "\nルーンはまだ付いていない"
     return head
 
 
@@ -740,10 +740,65 @@ def init_sounds():
 
 
 def sfx(n, ch=None):
+    """効果音。チャンネル0〜2はBGMと共用なので、鳴り終わったらBGMにもどす（resume）。3番はBGMが使わない。"""
     if ch is None:
         ch = {0: 0, 1: 0, 2: 0, 3: 1, 4: 2, 5: 2, 6: 2, 7: 2, 8: 3, 9: 1, 10: 1,
               11: 1, 12: 2, 13: 3, 14: 2}.get(n, 0)
-    pyxel.play(ch, n)
+    pyxel.play(ch, n, resume=True)
+
+
+# ---- BGM（音色: s=矩形波 t=三角波 p=パルス波。音名はc0〜b4、rは休み） ----
+BGM_SPEED = {"dungeon": 24, "title": 20, "boss": 15}
+
+
+def _bars(*bars):
+    return "".join(b.replace(" ", "") for b in bars)
+
+
+def init_music():
+    S = pyxel.sounds
+    # --- ダンジョン: Aマイナー。8小節をくりかえす（旋律・ベース・アルペジオ） ---
+    mel_a = _bars("e3 r c3 e3 a3 r g3 e3", "f3 r a2 c3 f3 r e3 c3",
+                  "e3 r g3 e3 c4 r b3 g3", "d3 r g3 b3 d4 r b3 g3")
+    mel_b = _bars("a3 r r e3 c4 r b3 a3", "a3 r c4 a3 f3 r a3 c4",
+                  "b3 r d4 b3 g3 r b3 d4", "e4 r b3 g#3 b3 r g#3 e3")
+    root = lambda a, b: f"{a} r {a} {b} {a} r {a} {b}"
+    bass_a = _bars(root("a1", "e2"), root("f1", "c2"), root("c2", "g2"), root("g1", "d2"))
+    bass_b = _bars(root("a1", "e2"), root("f1", "c2"), root("g1", "d2"), root("e1", "b1"))
+    arp = lambda a, b, c: f"{a} {b} {c} {b} {a} {b} {c} {b}"
+    arp_a = _bars(arp("a2", "c3", "e3"), arp("f2", "a2", "c3"), arp("c3", "e3", "g3"), arp("g2", "b2", "d3"))
+    arp_b = _bars(arp("a2", "c3", "e3"), arp("f2", "a2", "c3"), arp("g2", "b2", "d3"), arp("e2", "g#2", "b2"))
+    sp = BGM_SPEED["dungeon"]
+    S[20].set(mel_a, "s", "4", "n", sp)
+    S[21].set(mel_b, "s", "4", "n", sp)
+    S[22].set(bass_a, "t", "5", "n", sp)
+    S[23].set(bass_b, "t", "5", "n", sp)
+    S[24].set(arp_a, "p", "2", "n", sp)
+    S[25].set(arp_b, "p", "2", "n", sp)
+    pyxel.musics[0].set([20, 21], [22, 23], [24, 25], [])
+    # --- タイトル: Cメジャー。明るく4小節 ---
+    t_mel = _bars("e3 g3 c4 g3 e3 g3 c4 r", "f3 a3 c4 a3 f3 a3 c4 r",
+                  "g3 b3 d4 b3 g3 b3 d4 r", "c4 b3 g3 e3 c3 r r r")
+    t_bass = _bars(root("c2", "g2"), root("f1", "c2"), root("g1", "d2"), root("c2", "g2"))
+    t_arp = _bars(arp("c3", "e3", "g3"), arp("c3", "f3", "a3"), arp("d3", "g3", "b3"), arp("c3", "e3", "g3"))
+    sp = BGM_SPEED["title"]
+    S[26].set(t_mel, "s", "4", "n", sp)
+    S[27].set(t_bass, "t", "5", "n", sp)
+    S[28].set(t_arp, "p", "2", "n", sp)
+    pyxel.musics[1].set([26], [27], [28], [])
+    # --- ボス: Dマイナー。速くてせまる感じ ---
+    b_mel = _bars("d3 d3 f3 d3 a3 r g3 f3", "d3 d3 f3 d3 a#3 r a3 g3",
+                  "c3 c3 e3 c3 g3 r f3 e3", "a2 a2 c#3 a2 e3 r d3 c#3")
+    b_bass = _bars(root("d1", "a1"), root("a#1", "f2"), root("c2", "g2"), root("a1", "e2"))
+    b_arp = _bars(arp("d2", "f2", "a2"), arp("a#2", "d3", "f3"), arp("c3", "e3", "g3"), arp("a2", "c#3", "e3"))
+    sp = BGM_SPEED["boss"]
+    S[29].set(b_mel, "p", "4", "n", sp)
+    S[30].set(b_bass, "t", "6", "n", sp)
+    S[31].set(b_arp, "s", "2", "n", sp)
+    pyxel.musics[2].set([29], [30], [31], [])
+
+
+BGM_ID = {"dungeon": 0, "title": 1, "boss": 2}
 
 
 def find_font():
@@ -1049,6 +1104,9 @@ class Game:
         FONT = pyxel.Font(find_font())
         load_sprites()
         init_sounds()
+        init_music()
+        self.bgm_on = True
+        self.bgm_cur = None
         for nm in ITEMS:      # 2列表示に収まらない長い名前を、開発中に気づけるようにする
             if len(nm) > ITEM_NAME_MAX:
                 print(f"[警告] アイテム名が長すぎます({len(nm)}文字>{ITEM_NAME_MAX}): {nm}")
@@ -1105,24 +1163,11 @@ class Game:
         self.shop_pending = None
         self.best[self.dg_idx] = max(self.best[self.dg_idx], 1)
         self.gen_floor()
-        p = self.p
-        for n in ("薬草", "おにぎり", "いかずちの杖"):
-            it = make_item(n)
-            if n == "いかずちの杖":
-                it["n"] = 3
-            p.inv.append(it)
-        club = make_item("弱い剣")
-        club["base"], club["plus"], club["slots"], club["marks"] = 2, 0, 1, []
-        club["eq"] = True
-        p.inv.insert(0, club)
-        p.gold = 20
-        self.msg(f"ナポは「{self.dg['name']}」に足をふみ入れた。", 7)
-        self.msg(f"目指すは{self.last}Fの奥。まずはカードを1枚えらぼう。", 10)
-        skills = [k for k, c in CARDS.items() if c["r"] == 1 and c["t"] == "skill"]
-        others = [k for k, c in CARDS.items() if c["r"] == 1 and c["t"] in ("stat", "passive")]
-        pick = [random.choice(skills)] + random.sample(others, 2)
-        random.shuffle(pick)
-        self.open_cards(pick, "start")
+        self.p.gold = 0
+        self.state = "play"
+        self.need_release = True
+        self.msg(f"ナポは「{self.dg['name']}」に足をふみ入れた。（手ぶら！）", 7)
+        self.msg(f"目指すは{self.last}Fの奥。敵をたおすとカードがもらえる。", 10)
 
     def next_floor(self):
         self.floor += 1
@@ -1497,13 +1542,32 @@ class Game:
         return self.p.cards.count(cid)
 
     def gear_marks(self, kind):
-        """そうび中の剣("weapon")か盾("shield")の印を、{印: 個数} で返す。"""
+        """そうび中の剣("weapon")か盾("shield")のルーンを、{ルーン: 個数} で返す。"""
         out = {}
         for it in self.p.inv:
             if it["eq"] and ITEMS[it["name"]]["k"] == kind:
                 for m in it["marks"]:
                     out[m] = out.get(m, 0) + 1
         return out
+
+    def gear_diff(self, it):
+        """カーソルを合わせた剣・盾が、いまのそうびより強化か弱体かを (文字, 色) で返す。そうび中・対象外はNone。"""
+        if not is_gear(it) or it["eq"]:
+            return None
+        k = ITEMS[it["name"]]["k"]
+        cur = next((o for o in self.p.inv if o["eq"] and ITEMS[o["name"]]["k"] == k), None)
+        cv = gear_val(cur) if cur else 0
+        nv = gear_val(it)
+        st = self.stats()
+        key = "atk" if k == "weapon" else "df"
+        lab = "攻撃力" if k == "weapon" else "防御力"
+        d = nv - cv
+        txt_ = f"{lab} {st[key]}→{st[key] + d}"
+        if d > 0:
+            return f"{txt_}  ▲強化 +{d}", 11
+        if d < 0:
+            return f"{txt_}  ▼弱体 {d}", 8
+        return f"{txt_}  ＝変わらない", 13
 
     def wmark(self, m):
         return self.gear_marks("weapon").get(m, 0)
@@ -1518,7 +1582,7 @@ class Game:
         return None
 
     def resist_mult(self, e):
-        """そうび中の盾の印による、敵ごとの被ダメージ倍率。"""
+        """そうび中の盾のルーンによる、敵ごとの被ダメージ倍率。"""
         sm = self.gear_marks("shield")
         if not sm:
             return 1.0
@@ -1535,9 +1599,35 @@ class Game:
         self.p.mp = min(self.p.mp, st["mmp"])
 
     # ------------------------------------------------------------------ update
+    def want_bgm(self):
+        st = self.state
+        if st == "title":
+            return "title"
+        if st in ("gameover", "clear"):
+            return None
+        r = getattr(self, "room", None)
+        if r is not None and r.boss_room and any(e.boss for e in r.enemies):
+            return "boss"
+        return "dungeon"
+
+    def update_bgm(self):
+        want = self.want_bgm() if self.bgm_on else None
+        if want == self.bgm_cur:
+            return
+        self.bgm_cur = want
+        for ch in range(3):
+            pyxel.stop(ch)
+        if want:
+            pyxel.playm(BGM_ID[want], loop=True)
+
     def update(self):
         self.frame += 1
         self.update_fx()
+        if pyxel.btnp(pyxel.KEY_M):
+            self.bgm_on = not self.bgm_on
+            if self.state != "title":
+                self.msg("BGM " + ("オン" if self.bgm_on else "オフ"), 11)
+        self.update_bgm()
         if pyxel.btnp(pyxel.KEY_H) and self.state != "title":
             self.help = not self.help
             return
@@ -1876,9 +1966,13 @@ class Game:
             elif (e.para <= 0 and not e.sleep and not e.boss and not e.star
                   and (e.x, e.y) in dist and dist[(e.x, e.y)] <= 12):
                 old.enemies.remove(e)
-                new.pending.append([dist[(e.x, e.y)] + 1, e, OPP[d]])
+                new.pending.append([dist[(e.x, e.y)] + 1, e, OPP[d], old])
         for pd in old.pending:
-            new.pending.append([pd[0] + 8, pd[1], OPP[d]])
+            if len(pd) > 3 and pd[3] is new:
+                # 今まさに出ていった部屋へ戻った：その部屋から追ってきていた敵は、ドアの前にいる
+                followers.append(pd[1])
+            else:
+                new.pending.append([pd[0] + 8, pd[1], OPP[d], pd[3] if len(pd) > 3 else None])
         old.pending = []
         if old.kind == "gimmick" and not old.solved:
             old.boxes = set(old.boxes_init)
@@ -1893,6 +1987,8 @@ class Game:
             if pos:
                 e.x, e.y = pos
                 new.enemies.append(e)
+            else:
+                new.pending.append([2, e, OPP[d], old])     # 置き場がなくても、敵は消さない
         for e in new.enemies:
             e.rx, e.ry = e.x * TS, e.y * TS
         self.projs = []
@@ -1900,7 +1996,7 @@ class Game:
             self.msg(f"{followers[0].kind}がついてきた！", 8)
         if new.boss_room and first:
             self.msg("ゆめくい「…だれだ、わたしの眠りをじゃまするのは」", 8)
-            self.msg("ゆめくいは物理と魔法、どちらかが効かない体に入れかわる！", 9)
+            self.msg("ゆめくいの体は、ときどき属性がかわる！", 9)
             sfx(14)
         if first:
             if new.kind == "shop":
@@ -1990,7 +2086,7 @@ class Game:
             sfx(13)
 
     def attack_targets(self):
-        """通常攻撃が当たる敵。大鎌の印があれば、前方3方向（正面と、左右ななめ前）。"""
+        """通常攻撃が当たる敵。大鎌のルーンがあれば、前方3方向（正面と、左右ななめ前）。"""
         p = self.p
         if not self.wmark("scythe"):
             e = self.facing_enemy()
@@ -2023,6 +2119,12 @@ class Game:
         p = self.p
         hits = 2 if random.random() < min(1.0, 0.3 * (self.ncard("renda") + self.wmark("renda"))) else 1
         crit_p = min(1.0, 0.25 * (self.ncard("crit") + self.wmark("crit")))
+        if e.star:
+            self.popup(e.x, e.y, "×", 13)
+            self.msg(f"{e.kind}に、ふつうの攻撃は効かない！", 13)
+            sfx(2)
+            self.wake(e)
+            return
         el = self.weapon_elem()
         mult = elem_mult(el, e.elem)
         if e.race == "dragon" and self.wmark("dragon"):
@@ -2057,7 +2159,7 @@ class Game:
             if self.ncard("drain"):
                 heal = max(1, dmg * self.ncard("drain") // 4)
                 p.hp = min(st["mhp"], p.hp + heal)
-            # 印の効果：眠り・混乱（ボスには効かない）
+            # ルーンの効果：眠り・混乱（ボスには効かない）
             if e in self.room.enemies and e.hp > 0 and e.ai != "boss":
                 if random.random() < min(1.0, 0.15 * self.wmark("sleep")):
                     e.para = max(e.para, 5)
@@ -2263,7 +2365,7 @@ class Game:
         return self.info_cache
 
     def info_gear_pages(self):
-        """属性・剣と盾・印・合成のかいせつ。"""
+        """属性・剣と盾・ルーン・合成のかいせつ。"""
         by = {k: [] for k in ELEMS}
         for nm, d in ENEMIES.items():
             if d.get("elem") and d["w"] > 0:
@@ -2278,25 +2380,25 @@ class Game:
         for k, (lab, col) in ELEMS.items():
             p1.append((f"{lab}: " + " ".join(by[k]), col))
         p2 = [("【剣と盾】", 10),
-              ("素の剣・盾は5段階（弱い・普通・強い・かなり強い・最強）。基礎値が高く、印の枠は0〜2。", 7),
-              ("特性の剣・盾は、はじめから印が1つ。基礎値は低め（1〜5）で、印の枠は2〜4。", 7),
+              ("素の剣・盾は5段階（弱い・普通・強い・かなり強い・最強）。基礎値が高く、ルーンの枠は0〜2。", 7),
+              ("特性の剣・盾は、はじめからルーンが1つ。基礎値は低め（1〜5）で、ルーンの枠は2〜4。", 7),
               ("基礎値・枠・修正値（+0〜+3）は、拾うたびにランダム。床では中身はわからず、拾うとわかる。", 7),
               ("修正値は、武器強化・盾強化の巻物（そうび中のものが+1）と、合成でも上がる。", 7),
-              ("基礎値が高く、枠も多いものを引いたら当たり。強い印を合成していく。", 11),
+              ("基礎値が高く、枠も多いものを引いたら当たり。強いルーンを合成していく。", 11),
               ("【合成の巻物】", 10),
               ("よむと、土台にする剣（盾）と、素材にする同じ種類のものをえらぶ。", 7),
               ("素材にできる数は、よむたびにランダム（1〜3個）。素材の修正値が土台に足される。", 7),
-              ("素材の印は、土台の空き枠にうつる。枠が足りない印と、2つめの属性はうつせない。素材はなくなる。", 7),
+              ("素材のルーンは、土台の空き枠にうつる。枠が足りないルーンと、2つめの属性はうつせない。素材はなくなる。", 7),
               ("合成の巻物は、床・お店のほか、「合成マン」（黄色いマムル）が70%で落とす。", 11)]
-        p3 = [("【剣の印】", 10)]
+        p3 = [("【剣のルーン】", 10)]
         for k in ("fire", "water", "wood", "dark", "light", "scythe", "renda", "crit", "sleep", "confuse", "dragon"):
             p3.append((f"{MARKS[k][0]}: {MARKS[k][1]}", ELEMS[k][1] if k in ELEMS else 7))
         p3.append(("れんげき・かいしんは、同じ名前のカードと重なる。眠り・混乱はボスに効かない。", 12))
-        p4 = [("【盾の印】", 10)]
+        p4 = [("【盾のルーン】", 10)]
         for k in ("res_fire", "res_water", "res_wood", "res_dark", "res_light", "res_dragon", "res_mage", "hara"):
             p4.append((f"{MARKS[k][0]}: {MARKS[k][1]}", 7))
-        p4.append(("同じ印を重ねると、軽減は1つごとに重なる（耐属性は×0.65、龍耐は×0.6）。", 12))
-        p4.append(("盾の印も、合成で素材の盾からうつせる。", 12))
+        p4.append(("同じルーンを重ねると、軽減は1つごとに重なる（耐属性は×0.65、龍耐は×0.6）。", 12))
+        p4.append(("盾のルーンも、合成で素材の盾からうつせる。", 12))
         return [p1, p2, p3, p4]
 
     def info_card_pages(self):
@@ -2546,6 +2648,9 @@ class Game:
         adj = cheb(e.x, e.y, p.x, p.y) == 1 and self.diag_ok(r, e.x, e.y, dx, dy)
         if dx:
             e.face = 1 if dx > 0 else -1
+        # ギタンを盗んだ敵は、そばにいても戦わず、出口へ逃げる
+        if e.ai == "thief" and e.loot and self.thief_escape(e, dist):
+            return
         # 遠距離
         if not adj and e.ai in ("ranged", "breath") and cheb(e.x, e.y, p.x, p.y) <= 6:
             if self.clear_line(r, e.x, e.y, p.x, p.y) and random.random() < (0.5 if e.ai == "ranged" else 0.35):
@@ -2610,6 +2715,58 @@ class Game:
         e.x, e.y = o[3], o[4]
         if o[5]:
             e.face = 1 if o[5] > 0 else -1
+
+    def thief_escape(self, e, dist):
+        """ギタンを盗んだ敵は、出口へ向かい、ついたら隣の部屋へにげる。"""
+        r = self.room
+        p = self.p
+        if r.locked:
+            return False
+        exits = [d for d in r.doors if (r.gx + DIR_VEC[d][0], r.gy + DIR_VEC[d][1]) in self.rooms]
+        if not exits:
+            return False
+        here = (e.x, e.y)
+        for d in exits:
+            if DOORS[d] == here:
+                new = self.rooms[(r.gx + DIR_VEC[d][0], r.gy + DIR_VEC[d][1])]
+                pos = self.nearest_free(new, *DOORS[OPP[d]])
+                if not pos:
+                    return False
+                r.enemies.remove(e)
+                e.x, e.y = pos
+                e.rx, e.ry = pos[0] * TS, pos[1] * TS
+                new.enemies.append(e)
+                self.msg(f"{e.kind}は{e.loot}ギタンをもって、となりの部屋へにげた！", 8)
+                return True
+        best = None
+        for d in exits:
+            dd = self.bfs(r, DOORS[d][0], DOORS[d][1], 40)
+            mine = dd.get(here)
+            if mine is None:
+                continue
+            safe = 0 if dist.get(DOORS[d], 999) > mine else 1      # プレイヤーより先に着ける出口を優先
+            if best is None or (safe, mine) < best[0]:
+                best = ((safe, mine), dd)
+        if not best:
+            return False
+        dd = best[1]
+        cur = dd[here]
+        opts = []
+        for ddx, ddy in DIRS8:
+            nx, ny = e.x + ddx, e.y + ddy
+            if not self.can_step(r, e.x, e.y, ddx, ddy):
+                continue
+            if self.enemy_at(nx, ny) or (nx, ny) == (p.x, p.y):
+                continue
+            if (nx, ny) in dd and dd[(nx, ny)] < cur:
+                opts.append((dd[(nx, ny)], random.random(), nx, ny, ddx))
+        if not opts:
+            return False
+        opts.sort()
+        e.x, e.y = opts[0][2], opts[0][3]
+        if opts[0][4]:
+            e.face = 1 if opts[0][4] > 0 else -1
+        return True
 
     def align_rank(self, x, y):
         p = self.p
@@ -2813,7 +2970,11 @@ class Game:
         if cid == "fire":
             end, e = self.line_target()
             delay = self.shoot(end, 9)
-            if e:
+            if e and e.star:
+                self.popup(e.x, e.y, "×", 13, delay)
+                self.msg(f"{e.kind}に魔法は効かない！", 13)
+                self.wake(e)
+            elif e:
                 self.hurt_enemy(e, max(1, round((st["mag"] * 2 + 4) * random.uniform(0.9, 1.1))), 9, delay)
         elif cid == "heal":
             v = st["mag"] * 3 + 12
@@ -2825,6 +2986,10 @@ class Game:
             self.flash_screen = 6 if cid == "thunder" else 10
             targets = list(self.room.enemies)
             for e in targets:
+                if e.star:
+                    self.popup(e.x, e.y, "×", 13)
+                    self.wake(e)
+                    continue
                 base = st["mag"] + 6 if cid == "thunder" else st["mag"] * 2 + 16
                 self.hurt_enemy(e, max(1, round(base * random.uniform(0.9, 1.1))), 10)
             if not targets:
@@ -2840,7 +3005,10 @@ class Game:
                 if self.is_wall(r, x, y):
                     break
                 e = self.enemy_at(x, y)
-                if e:
+                if e and e.star:
+                    self.popup(e.x, e.y, "×", 13)
+                    self.wake(e)
+                elif e:
                     self.hurt_enemy(e, max(1, round(st["atk"] * 1.3 * random.uniform(0.9, 1.1) - e.df)), 7)
         elif cid == "hoshi":
             p.lx, p.ly = p.fx * 7, p.fy * 7
@@ -3169,7 +3337,7 @@ class Game:
         if add:
             self.msg(f"修正値が+{add}された。", 11)
         if moved:
-            self.msg("印がうつった: " + "・".join(MARKS[m][0] for m in moved), 11)
+            self.msg("ルーンがうつった: " + "・".join(MARKS[m][0] for m in moved), 11)
         if lost:
             self.msg("枠が足りず（同じ属性は1つだけ）うつせなかった: " + "・".join(MARKS[m][0] for m in lost), 13)
         self.clamp_player()
@@ -3201,7 +3369,7 @@ class Game:
                 txt(x + 6, yy, mark, 10)
                 txt(x + 16, yy, e, 10)
                 txt(x + 26, yy, fit_text(item_label(g), 110), 7)
-                txt(x + 140, yy, fit_text(f"印{len(g['marks'])}/{g['slots']}  {names}", w - 150), 12)
+                txt(x + 140, yy, fit_text(f"ルーン{len(g['marks'])}/{g['slots']}  {names}", w - 150), 12)
             else:
                 txt(x + 26, yy, "▶ けってい（合成する）", 10 if self.fuse_picks else 13)
         if rows > vis:
@@ -3212,14 +3380,18 @@ class Game:
         if self.fuse_sel < len(cands):
             g = cands[self.fuse_sel]
             txt(dx + 8, dy + 4, item_label(g), 10)
+            gd = self.gear_diff(g)
+            if gd:
+                txt(dx + dw - 8 - tw(gd[0]), dy + 4, gd[0], gd[1])
             for i, line in enumerate(wrap(item_desc(g), dw - 16)[:4]):
                 txt(dx + 8, dy + 16 + i * 11, line, 7)
         else:
-            lines = [f"土台: {item_label(self.fuse_base)}  印{len(self.fuse_base['marks'])}/{self.fuse_base['slots']}",
-                     "素材の修正値が土台に足され、素材の印が空き枠にうつる。",
-                     "空き枠が足りない印・同じ属性の印はうつせない。素材はなくなる。"]
-            for i, line in enumerate(lines):
-                txt(dx + 8, dy + 8 + i * 12, line, 7)
+            lines = [f"土台: {item_label(self.fuse_base)}  ルーン{len(self.fuse_base['marks'])}/{self.fuse_base['slots']}",
+                     "素材の修正値が土台に足され、素材のルーンが空き枠にうつる。",
+                     "空き枠が足りないルーン・同じ属性のルーンはうつせない。素材はなくなる。"]
+            shown = [ln2 for ln in lines for ln2 in wrap(ln, dw - 16)]
+            for i, line in enumerate(shown[:5]):
+                txt(dx + 8, dy + 6 + i * 11, line, 7)
 
     def blow(self, e):
         p = self.p
@@ -3417,9 +3589,9 @@ class Game:
             s = f"{self.floor}F" if self.floor < self.last else f"{self.last}F  さいごのフロア"
             w = tw(s) + 40
             bx = (W - w) // 2
-            pyxel.rect(bx, ROOM_Y + 90, w, 24, 0)
-            pyxel.rectb(bx, ROOM_Y + 90, w, 24, 10)
-            txts((W - tw(s)) // 2, ROOM_Y + 97, s, 10)
+            pyxel.rect(bx, ROOM_Y + 22, w, 24, 0)
+            pyxel.rectb(bx, ROOM_Y + 22, w, 24, 10)
+            txts((W - tw(s)) // 2, ROOM_Y + 29, s, 10)
         st = self.state
         if st in ("inv", "inv_act"):
             self.draw_inv()
@@ -3448,7 +3620,9 @@ class Game:
             if sp:
                 nm = item_label(sp["item"]) if "item" in sp else "カード「" + CARDS[sp["card"]]["name"] + "」"
                 desc = item_desc(sp["item"]).replace("\n", " ") if "item" in sp else "★" * CARDS[sp["card"]]["r"] + " " + TYPE_LABEL[CARDS[sp["card"]]["t"]][0]
-                self.box_msg([f"{nm}  {sp['price']}ギタン", desc[:26], f"（もちギタン {self.p.gold}）",
+                gd = self.gear_diff(sp["item"]) if "item" in sp else None
+                self.box_msg([f"{nm}  {sp['price']}ギタン", desc[:26],
+                              f"（もちギタン {self.p.gold}）" + ("  " + gd[0].split("  ")[1] if gd else ""),
                               "Z:買う（カードは中身を見てから）  X:やめる"])
         elif st == "stairs":
             if self.floor >= self.last:
@@ -3643,9 +3817,70 @@ class Game:
         if p.flash and p.flash % 4 < 2:
             pyxel.pal(14, 7)
             pyxel.pal(15, 7)
+        view = "b" if (p.fy < 0 and p.fx == 0) else ("f" if p.fx == 0 else "s")
+        if view == "b":
+            self.draw_gear(x, y - bob, view, True)      # 剣は体の後ろ側になる
         pyxel.blt(x, y - bob, 0, u, v, w, TS, 0)
         pyxel.pal()
+        if view != "b":
+            self.draw_gear(x, y - bob, view, p.fx >= 0)
         pyxel.pset(x + 8 + p.fx * 9, y + 8 + p.fy * 9, 10)
+
+    def draw_gear(self, x, y, view, right):
+        """そうびしている剣と盾を、16ドットのナポに重ねて描く（持っているのが見える程度の簡単な絵）。
+        剣の刃は属性の色、盾の色は耐える属性の色になる。"""
+        sw = sh = None
+        for it in self.p.inv:
+            if it["eq"]:
+                k = ITEMS[it["name"]]["k"]
+                if k == "weapon":
+                    sw = it
+                elif k == "shield":
+                    sh = it
+        if not sw and not sh:
+            return
+
+        def px(dx, dy, col):
+            pyxel.pset(x + (dx if right else 15 - dx), y + dy, col)
+
+        if sw:
+            blade = 7
+            for m in sw["marks"]:
+                if m in ELEMS:
+                    blade = ELEMS[m][1]
+                elif m == "dragon":
+                    blade = 8
+            if view == "s":
+                pts = [(11, 12), (12, 11), (13, 10), (14, 9), (15, 8)]
+                for i, (dx, dy) in enumerate(pts):
+                    px(dx, dy, 10 if i == 0 else blade)
+            else:
+                col_x = 14 if view == "f" else 1
+                for dy in range(4, 12):
+                    pyxel.pset(x + col_x, y + dy, blade)
+                pyxel.pset(x + col_x - 1, y + 12, 10)
+                pyxel.pset(x + col_x, y + 12, 10)
+                pyxel.pset(x + col_x + 1, y + 12, 10)
+        if sh:
+            col = 12
+            for m in sh["marks"]:
+                if m.startswith("res_") and m[4:] in ELEMS:
+                    col = ELEMS[m[4:]][1]
+                elif m == "res_dragon":
+                    col = 8
+                elif m == "res_mage":
+                    col = 6
+                elif m == "hara":
+                    col = 9
+            if view == "s":
+                x0 = 4
+                pyxel.rect(x + (x0 if right else 15 - x0 - 3), y + 10, 4, 5, col)
+                pyxel.rectb(x + (x0 if right else 15 - x0 - 3), y + 10, 4, 5, 1)
+            else:
+                x0 = 0 if view == "f" else 12
+                pyxel.rect(x + x0, y + 9, 4, 6, col)
+                pyxel.rectb(x + x0, y + 9, 4, 6, 1)
+                pyxel.pset(x + x0 + 1, y + 11, 7)
 
     def draw_enemy(self, e):
         x = e.rx + e.lx
@@ -3824,6 +4059,9 @@ class Game:
         dx, dy, dw, dh = 4, 204, W - 8, 66
         self.panel(dx, dy, dw, dh)
         txt(dx + 8, dy + 4, item_label(it), 10)
+        gd = self.gear_diff(it)
+        if gd:
+            txt(dx + dw - 8 - tw(gd[0]), dy + 4, gd[0], gd[1])
         for i, line in enumerate(wrap(item_desc(it), dw - 16)[:4]):
             txt(dx + 8, dy + 16 + i * 11, line, 7)
         if self.state == "inv_act":
@@ -4042,39 +4280,41 @@ class Game:
         txt(x + (w - tw(s2)) // 2, y + h - 16, s2, 10)
 
     def draw_title(self):
-        pyxel.rect(0, 0, W, H, 1)
+        # 明るい青のチェック模様
+        pyxel.rect(0, 0, W, H, 12)
         for i in range(0, W, 16):
             for j in range(0, H, 16):
                 if (i // 16 + j // 16) % 2 == 0:
-                    pyxel.rect(i, j, 16, 16, 5)
-        pyxel.dither(0.7)
-        pyxel.rect(0, 0, W, H, 1)
-        pyxel.dither(1)
+                    pyxel.rect(i, j, 16, 16, 6)
         u, v = SPR_IDX["napo_f"]
         bob = 2 if (self.frame // 20) % 2 else 0
         pyxel.blt(W // 2 - 8, 44 - bob, 0, u, v, TS, TS, 0, scale=2)
         t1 = "ナポのカードダンジョン"
+        pyxel.rect((W - tw(t1)) // 2 - 6, 76, tw(t1) + 12, 16, 1)
         txts((W - tw(t1)) // 2, 80, t1, 14)
         t2 = "（仮）プロトタイプ3"
-        txt((W - tw(t2)) // 2, 96, t2, 13)
+        pyxel.rect((W - tw(t2)) // 2 - 6, 94, tw(t2) + 12, 14, 1)
+        txt((W - tw(t2)) // 2, 97, t2, 7)
         for i, dg in enumerate(DUNGEONS):
             y = 116 + i * 40
             sel = i == self.title_sel
             if sel:
                 self.panel(40, y, 240, 36)
             else:
-                pyxel.rect(40, y, 240, 36, 1)
-                pyxel.rectb(40, y, 240, 36, 5)
+                pyxel.rect(40, y, 240, 36, 5)
+                pyxel.rectb(40, y, 240, 36, 1)
             bv = self.best[i]
             rec = "" if not bv else ("踏破！" if bv > dg["last"] else f"最高 {bv}F")
-            txt(50, y + 4, ("▶ " if sel else "   ") + dg["name"] + f"（{dg['last']}F）", 10 if sel else 13)
-            txt(270 - tw(rec), y + 4, rec, 11)
-            txt(62, y + 18, dg["desc"][0], 7 if sel else 13)
+            txt(50, y + 4, ("▶ " if sel else "   ") + dg["name"] + f"（{dg['last']}F）", 10 if sel else 7)
+            txt(270 - tw(rec), y + 4, rec, 11 if sel else 10)
+            txt(62, y + 18, dg["desc"][0], 7 if sel else 6)
         s = "↑↓:えらぶ  Z:はじめる  H:そうさ説明"
+        pyxel.rect((W - tw(s)) // 2 - 6, 202, tw(s) + 12, 16, 1)
         txt((W - tw(s)) // 2, 206, s, 7)
         if (self.frame // 30) % 2 == 0:
             s = "Zではじめる"
-            txts((W - tw(s)) // 2, 222, s, 10)
+            pyxel.rect((W - tw(s)) // 2 - 6, 220, tw(s) + 12, 16, 1)
+            txts((W - tw(s)) // 2, 224, s, 10)
 
     def draw_help(self):
         x, y, w, h = 10, 6, 300, 260
@@ -4084,15 +4324,15 @@ class Game:
             ("矢印:移動（2つ同時押しでななめ）  Space:足ぶみ", 7),
             ("Shift+矢印:ダッシュ  A+矢印:向きだけ  S+矢印:ななめだけ", 7),
             ("Z:攻撃 / 階段・ガチャ  X:もちもの  C:カード（わざ）", 7),
-            ("", 7),
+            ("M:BGMのオン・オフ", 7),
             ("ルール", 10),
             ("いちばん奥の『ゆめくい』をたおせばクリア", 7),
             ("敵をたおすとカードが選べる（あと○体が目安）", 7),
             ("カードは10枚まで。11枚目は1枚すてる", 7),
             ("同じカードは重なって効果が上がる", 7),
             ("どうぐカードはカード枠を使わない", 3),
-            ("敵の左上オレンジ=物理が効かない", 9),
-            ("敵の右上むらさき=魔法が効かない", 6),
+            ("敵の左上の色の点=属性（火赤 水青 木緑 闇灰 光黄）", 9),
+            ("剣の属性が有利ならダメージ2倍、不利なら半分", 6),
             ("巻物・いかずちの杖・ドラゴン草はどんな敵にも効く", 7),
             ("もちもの画面でC:せいとん  zの敵は眠っている", 12),
             ("モンスターハウスは全滅させるまで出られない", 8),
