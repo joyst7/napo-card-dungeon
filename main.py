@@ -26,6 +26,16 @@ DUNGEONS = [
          desc=["本番。30Fの奥のゆめくいをたおせ", "ショップ・モンスターハウスあり"]),
 ]
 DROP_RATE = 0.7            # 合成マンが合成の巻物を落とす確率
+# ---- バランス調整（tools/bot.py で測って決めた値） ----
+GOLD_FLOOR_CHANCE = 0.45   # 部屋にギタンが落ちている確率（以前は0.6）
+GOLD_KILL_CHANCE = 0.3     # 敵がギタンを落とす確率（以前は0.45）
+GOLD_PER_FLOOR = 0.15      # ギタンの額が1階ごとに増える割合（以前は0.25。後半ギタンが余りすぎた）
+GACHA_PER_FLOOR = 3        # 1台のガチャを1フロアで回せる回数
+ENEMY_HP_PER_LV = 0.15     # 同じく、1階ごとに増えるHPの割合（以前は0.10）
+ENEMY_ATK_PER_LV = 0.045   # 敵が出はじめの階より深いほど、1階ごとに上がる攻撃力の割合（以前は「2階ごとに+1」）
+ROOM_ITEMS = (0, 2)        # 1部屋に落ちている道具の数（以前は1〜3。多すぎて食料も強化も余った）
+HP_PER_FLOOR = 2           # 階段を降りるたびに最大HPが上がる量（レベルの代わり）
+MAGIC_PER_FLOOR = {"fire": 2.0, "heal": 2.0, "thunder": 1.5, "flare": 2.5}   # 魔法が階ごとに強くなる量
 FLOOR_TURN_LIMIT = 600     # 1フロアに居られるターン数
 INV_MAX = 20
 INV_ROWS = 10              # もちもの画面の1列の行数。INV_MAXが20なら2列で全部見える
@@ -94,8 +104,8 @@ CARDS = {
     "hp10": C("たいりょく+10", 1, "stat", {"mhp": 10}, "最大HPが10上がる"),
     "mag2": C("まりょく+2", 1, "stat", {"mag": 2}, "魔力が2上がる。魔法の威力と回復量がのびる"),
     "mp6": C("MPタンク", 1, "stat", {"mmp": 6}, "最大MPが6上がる"),
-    "fire": C("ファイア", 1, "skill", {"mp": 3}, "前方へ火の玉。魔法ダメージ（魔力×2+4）"),
-    "heal": C("ヒール", 1, "skill", {"mp": 4}, "HPを回復する（魔力×3+12）"),
+    "fire": C("ファイア", 1, "skill", {"mp": 3}, "前方へ火の玉。魔法ダメージ（魔力×2+4+階数×2）"),
+    "heal": C("ヒール", 1, "skill", {"mp": 4}, "HPを回復する（魔力×3+12+階数×2）"),
     "hara": C("はらもち", 1, "passive", {}, "満腹度の減りが半分になる"),
     "i_staff": C("つえ箱", 1, "item", {"give": "いかずちの杖", "n": 1}, "いかずちの杖をもらう。カード枠は使わない"),
     "i_food": C("おべんとう", 1, "item", {"give": "大きなおにぎり", "n": 1}, "大きなおにぎりをもらう。カード枠は使わない"),
@@ -105,7 +115,7 @@ CARDS = {
     "def4": C("まもり+4", 2, "stat", {"def": 4}, "防御力が4上がる"),
     "hp20": C("たいりょく+20", 2, "stat", {"mhp": 20}, "最大HPが20上がる"),
     "mag4": C("まりょく+4", 2, "stat", {"mag": 4}, "魔力が4上がる"),
-    "thunder": C("サンダー", 2, "skill", {"mp": 7}, "部屋の敵すべてに魔法ダメージ（魔力+6）"),
+    "thunder": C("サンダー", 2, "skill", {"mp": 7}, "部屋の敵すべてに魔法ダメージ（魔力+6+階数×1.5）"),
     "pierce": C("つらぬき", 2, "skill", {"mp": 3}, "前方2マスを貫く物理攻撃（攻撃力×1.3）"),
     "steal": C("ぬすむ", 2, "skill", {"mp": 2}, "前の敵から道具を盗む（成功率60%）"),
     "warp": C("ワープ", 2, "skill", {"mp": 4}, "部屋の中の、敵から遠い場所へ飛ぶ"),
@@ -125,7 +135,7 @@ CARDS = {
     "atk7": C("ちから+7", 3, "stat", {"atk": 7}, "攻撃力が7上がる"),
     "allup": C("オールアップ", 3, "stat", {"atk": 3, "def": 3, "mag": 3, "mhp": 10},
                "攻撃・防御・魔力+3 最大HP+10"),
-    "flare": C("ギガフレア", 3, "skill", {"mp": 12}, "部屋の敵すべてに大魔法（魔力×2+16）"),
+    "flare": C("ギガフレア", 3, "skill", {"mp": 12}, "部屋の敵すべてに大魔法（魔力×2+16+階数×2.5）"),
     "crit": C("かいしん", 3, "passive", {}, "通常攻撃が25%で会心（3倍）になる"),
     "magsword": C("まほうけん", 3, "passive", {},
                   "通常攻撃に魔力ぶんの魔法ダメージが乗る", g=True),
@@ -172,7 +182,7 @@ def E(hp, atk, df=0, spr="", fmin=1, fmax=10, w=10, **kw):
 ENEMIES = {
     # ---- 1〜10F ----
     "マムル": E(9, 3, spr="mamuru", elem="wood", fmin=1, fmax=4, w=30),
-    "キラーバット": E(7, 3, spr="bat", elem="dark", fmin=1, fmax=6, w=18, acts=2, erratic=0.3),
+    "キラーバット": E(7, 3, spr="bat", elem="dark", fmin=2, fmax=6, w=18, acts=2, erratic=0.3),
     "ゆうれい": E(12, 4, spr="ghost", elem="light", fmin=2, fmax=7, w=14),
     "アイアンヘッド": E(18, 5, 2, spr="iron", elem="fire", fmin=3, fmax=8, w=14),
     "ぬすっと": E(13, 3, spr="thief", elem="water", fmin=3, fmax=9, w=8, ai="thief"),
@@ -203,7 +213,8 @@ ENEMIES = {
     # ---- 特別 ----
     "オーガ": E(40, 8, 1, spr="ogre", elem="wood", fmin=0, fmax=0, w=0, slow=True, boss=True),
     "オーガキング": E(160, 20, 4, spr="ogre", elem="fire", fmin=0, fmax=0, w=0, boss=True, pal={4: 10, 8: 2, 10: 7}),
-    "ななつぼし": E(55, 9, spr="star", elem="light", fmin=0, fmax=0, w=0, star=True, slow=True),
+    "ななつぼし": E(55, 9, spr="star", elem="light", fmin=0, fmax=0, w=0, star=True, slow=True,
+                    erratic=0.85),   # 倒せない敵なので、追いかけずにふらふら歩く（出入り口や階段をふさがない）
     "ゆめくい": E(260, 14, 2, spr="yume", elem="dark", fmin=0, fmax=0, w=0, ai="boss", boss=True),
 }
 
@@ -246,7 +257,7 @@ STRAIT = [("炎の盾", "res_fire"), ("水の盾", "res_water"), ("木の盾", "
           ("光の盾", "res_light"), ("龍の盾", "res_dragon"), ("魔法の盾", "res_mage"),
           ("ハラヘラズの盾", "hara")]
 PLAIN_SLOTS = ([0, 1, 2], [5, 3, 2])     # 素の装備のルーンの数と、その出やすさ
-TRAIT_BASE = (1, 5)                        # 特性装備の基礎値（低め）
+TRAIT_BASE = (2, 6)                        # 特性装備の基礎値（素の装備よりは低め）
 TRAIT_SLOTS = (2, 4)                       # 特性装備のルーンの合計枠（最初のルーンを含む）
 PLAIN_PRICE = [60, 150, 300, 700, 1200]
 for _i, (_n, _r, _w) in enumerate(WTIER):
@@ -297,8 +308,8 @@ def elem_mult(att, dfn):
 
 # 出現テーブル（名前: 重み）。階数には依存しない。強い物は「出にくい」だけ
 ITEM_TABLE = {
-    "薬草": 24, "弟切草": 6, "ドラゴン草": 5, "いのちの草": 2, "ちからの草": 2,
-    "おにぎり": 15, "大きなおにぎり": 5,
+    "薬草": 14, "弟切草": 4, "ドラゴン草": 5, "いのちの草": 2, "ちからの草": 2,
+    "おにぎり": 10, "大きなおにぎり": 2,
     "いかずちの杖": 6, "ふきとばしの杖": 5, "かなしばりの杖": 5, "真空斬りの巻物": 6, "合成の巻物": 5,
     "武器強化の巻物": 4, "盾強化の巻物": 4,
 }
@@ -886,8 +897,8 @@ class Enemy:
         d = ENEMIES[kind]
         self.kind = kind
         lv = max(0, f - d["fmin"]) if d["fmin"] > 0 else 0
-        self.hp = self.mhp = int(d["hp"] * (1 + 0.10 * lv))
-        self.atk = d["atk"] + lv // 2
+        self.hp = self.mhp = int(d["hp"] * (1 + ENEMY_HP_PER_LV * lv))
+        self.atk = round(d["atk"] * (1 + ENEMY_ATK_PER_LV * lv))
         self.df = d["df"]
         self.elem = d.get("elem")
         self.race = d.get("race")
@@ -943,6 +954,7 @@ class Room:
         self.items = {}
         self.stairs = None
         self.gacha = None
+        self.gacha_left = GACHA_PER_FLOOR
         self.visited = False
         self.boss_room = False
         self.pending = []   # [delay, enemy, door]
@@ -1171,6 +1183,8 @@ class Game:
 
     def next_floor(self):
         self.floor += 1
+        self.p.bonus_mhp += HP_PER_FLOOR
+        self.p.hp += HP_PER_FLOOR
         self.fturn = 0
         self.projs = []
         self.dash = None
@@ -1179,7 +1193,7 @@ class Game:
         self.best[self.dg_idx] = max(self.best[self.dg_idx], self.floor)
         f = self.floor
         star = self.dg["star"]
-        self.msg(f"{f}Fについた。", 10)
+        self.msg(f"{f}Fについた。最大HPが{HP_PER_FLOOR}上がった。", 10)
         if f in (star - 2, star - 1):
             self.msg(f"うわさ: {star}Fの『ななつぼし』は物理も魔法も効かないらしい", 9)
         if f == star:
@@ -1307,7 +1321,8 @@ class Game:
         for c, r in self.rooms.items():
             if c == start or r.boss_room or r.kind in ("shop", "gimmick", "mhouse"):
                 continue
-            n = random.randint(1, 3) + (1 if f >= 5 and random.random() < 0.4 else 0)
+            # 1Fは手ぶらなので、敵を少なめにする
+            n = random.randint(1, 2 if f == 1 else 3) + (1 if f >= 5 and random.random() < 0.4 else 0)
             for _ in range(n):
                 if stars and random.random() < 0.45:
                     kind = "ななつぼし"
@@ -1333,15 +1348,15 @@ class Game:
         for c, r in self.rooms.items():
             if r.boss_room or r.kind in ("shop", "gimmick"):
                 continue
-            for _ in range(random.randint(1, 3)):
+            for _ in range(random.randint(*ROOM_ITEMS)):
                 pos = self.free_tile(r)
                 if pos:
                     r.items[pos] = make_item(wchoice(ipool))
-            if random.random() < 0.6:
+            if random.random() < GOLD_FLOOR_CHANCE:
                 pos = self.free_tile(r)
                 if pos:
                     g = make_item("ギタン")
-                    g["n"] = int(g["n"] * (1 + 0.25 * (f - 1)))
+                    g["n"] = int(g["n"] * (1 + GOLD_PER_FLOOR * (f - 1)))
                     r.items[pos] = g
 
     def spawn(self, kind, pos, f):
@@ -1364,8 +1379,8 @@ class Game:
     def setup_shop(self, r):
         spots = [(7, 4), (10, 4), (13, 4), (7, 8), (10, 8), (13, 8)]
         pool = [(n, w) for n, w in item_pool(self.floor)]
-        for pos in spots[:5]:
-            it = make_item(wchoice(pool))
+        for i, pos in enumerate(spots[:5]):
+            it = make_item(random.choice(["おにぎり", "大きなおにぎり"]) if i == 0 else wchoice(pool))
             r.shop[pos] = {"item": it, "price": int(ITEMS[it["name"]]["price"] * self.price_scale() / 10) * 10}
         cid = self.draw_cards(1, self.gacha_rates(), False, items=False)[0]
         price = {1: 150, 2: 350, 3: 700}[CARDS[cid]["r"]]
@@ -2214,9 +2229,9 @@ class Game:
             drop = make_item(e.drop)
         elif e.boss or e.star:
             drop = make_item(random.choice(RARE_GEAR + ["弟切草", "ドラゴン草", "いのちの草"]))
-        elif random.random() < 0.45:
+        elif random.random() < GOLD_KILL_CHANCE:
             drop = make_item("ギタン")
-            drop["n"] = int(random.randint(6, 18) * (1 + 0.25 * (f - 1)))
+            drop["n"] = int(random.randint(6, 18) * (1 + GOLD_PER_FLOOR * (f - 1)))
         elif random.random() < 0.10:
             drop = make_item(wchoice(item_pool(f)))
         if drop:
@@ -2381,7 +2396,7 @@ class Game:
             p1.append((f"{lab}: " + " ".join(by[k]), col))
         p2 = [("【剣と盾】", 10),
               ("素の剣・盾は5段階（弱い・普通・強い・かなり強い・最強）。基礎値が高く、ルーンの枠は0〜2。", 7),
-              ("特性の剣・盾は、はじめからルーンが1つ。基礎値は低め（1〜5）で、ルーンの枠は2〜4。", 7),
+              ("特性の剣・盾は、はじめからルーンが1つ。基礎値は低め（2〜6）で、ルーンの枠は2〜4。", 7),
               ("基礎値・枠・修正値（+0〜+3）は、拾うたびにランダム。床では中身はわからず、拾うとわかる。", 7),
               ("修正値は、武器強化・盾強化の巻物（そうび中のものが+1）と、合成でも上がる。", 7),
               ("基礎値が高く、枠も多いものを引いたら当たり。強いルーンを合成していく。", 11),
@@ -2961,6 +2976,13 @@ class Game:
                                col=col, kind=kind, fx=p.fx, fy=p.fy))
         return int(d * TS / 9)
 
+    def magic_power(self, cid, st=None):
+        """魔法の威力。魔力と、いまの階で決まる（属性・防御は無視する）。"""
+        st = st or self.stats()
+        base = {"fire": st["mag"] * 2 + 4, "heal": st["mag"] * 3 + 12,
+                "thunder": st["mag"] + 6, "flare": st["mag"] * 2 + 16}[cid]
+        return int(base + MAGIC_PER_FLOOR[cid] * self.floor)
+
     def use_skill(self, cid):
         p = self.p
         st = self.stats()
@@ -2975,9 +2997,9 @@ class Game:
                 self.msg(f"{e.kind}に魔法は効かない！", 13)
                 self.wake(e)
             elif e:
-                self.hurt_enemy(e, max(1, round((st["mag"] * 2 + 4) * random.uniform(0.9, 1.1))), 9, delay)
+                self.hurt_enemy(e, max(1, round(self.magic_power("fire", st) * random.uniform(0.9, 1.1))), 9, delay)
         elif cid == "heal":
-            v = st["mag"] * 3 + 12
+            v = self.magic_power("heal", st)
             p.hp = min(st["mhp"], p.hp + v)
             self.popup(p.x, p.y, f"+{v}", 11)
             self.burst(p.x, p.y, 11, 8)
@@ -2990,7 +3012,7 @@ class Game:
                     self.popup(e.x, e.y, "×", 13)
                     self.wake(e)
                     continue
-                base = st["mag"] + 6 if cid == "thunder" else st["mag"] * 2 + 16
+                base = self.magic_power(cid, st)
                 self.hurt_enemy(e, max(1, round(base * random.uniform(0.9, 1.1))), 10)
             if not targets:
                 self.msg("しかし敵はいなかった。", 13)
@@ -3484,6 +3506,12 @@ class Game:
         elif pressed(KZ):
             p = self.p
             cost = gacha_cost(self.floor)
+            if self.room.gacha_left <= 0:
+                self.msg("ガチャはもう空っぽだ。（1フロア3回まで）", 13)
+                sfx(2)
+                self.state = "play"
+                self.need_release = True
+                return
             if p.gold < cost:
                 self.msg(f"ギタンが足りない。（{cost}ギタン必要）", 13)
                 sfx(2)
@@ -3491,6 +3519,7 @@ class Game:
                 self.need_release = True
                 return
             p.gold -= cost
+            self.room.gacha_left -= 1
             if random.random() < 0.15:
                 pool = ["弟切草", "大きなおにぎり", "ドラゴン草", "いのちの草", "ちからの草"] + RARE_GEAR
                 self.g_item = make_item(random.choice(pool))
@@ -3609,7 +3638,7 @@ class Game:
             self.draw_discard()
         elif st == "gacha_confirm":
             r1, r2, r3 = self.gacha_rates()
-            self.box_msg([f"ガチャ台だ。{gacha_cost(self.floor)}ギタンでまわす？",
+            self.box_msg([f"ガチャ台だ。{gacha_cost(self.floor)}ギタンでまわす？（このフロアあと{self.room.gacha_left}回）",
                           f"（もちギタン {self.p.gold}）",
                           f"★★★{int(r3)}%  ★★{int(r2)}%  ★{int(r1)}%  ときどき道具",
                           "Z:まわす  X:やめる"])
@@ -4337,7 +4366,7 @@ class Game:
             ("もちもの画面でC:せいとん  zの敵は眠っている", 12),
             ("モンスターハウスは全滅させるまで出られない", 8),
             ("オレンジの矢印の扉は一方通行（戻れない）", 9),
-            ("ガチャは深い階ほどいいものが出る（ガチャ限定あり）", 14),
+            ("ガチャは深い階ほどいいものが出る。1台1フロア3回まで", 14),
             ("1フロア600ターンで風に飛ばされる", 7),
             ("I:かいせつページ（開発用）  H / X:とじる", 13),
         ]
