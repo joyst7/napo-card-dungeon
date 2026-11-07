@@ -240,7 +240,7 @@ ITEMS = {
     "真空斬りの巻物": dict(k="scroll", v=20, desc="部屋の敵すべてに固定ダメージ（20+階数）", price=180),
     "武器強化の巻物": dict(k="scroll", v="wup", desc="よむと、そうびしている剣の修正値が+1される", price=250),
     "盾強化の巻物": dict(k="scroll", v="sup", desc="よむと、そうびしている盾の修正値が+1される", price=250),
-    "合成の巻物": dict(k="scroll", v="fuse", desc="よむと、剣か盾にルーンと修正値を合成できる。合成できる個数は、よむたびにランダム", price=200),
+    "合成の巻物": dict(k="scroll", v="fuse", desc="よむと、剣か盾にルーンと修正値を合成できる。合成できる個数（1〜3個）は巻物ごとにちがう。やめれば巻物は残る", price=200),
     "ギタン": dict(k="gold", v=0, desc="お金", price=0),
 }
 # ---- 剣と盾 ----
@@ -2415,7 +2415,7 @@ class Game:
               ("基礎値が高く、枠も多いものを引いたら当たり。強いルーンを合成していく。", 11),
               ("【合成の巻物】", 10),
               ("よむと、土台にする剣（盾）と、素材にする同じ種類のものをえらぶ。", 7),
-              ("素材にできる数は、よむたびにランダム（1〜3個）。素材の修正値が土台に足される。", 7),
+              ("素材にできる数は巻物ごとにランダム（1〜3個）。途中でやめれば巻物は残る。素材の修正値が土台に足される。", 7),
               ("素材のルーンは、土台の空き枠にうつる。枠が足りないルーンと、2つめの属性はうつせない。素材はなくなる。", 7),
               ("合成の巻物は、床・お店のほか、「合成マン」（黄色いマムル）が70%で落とす。", 11)]
         p3 = [("【剣のルーン】", 10)]
@@ -3226,9 +3226,7 @@ class Game:
                 self.clamp_player()
             return True
         if k == "scroll" and d["v"] == "fuse":
-            self.remove_item(it)
-            self.msg(f"{name}をよんだ！", 12)
-            return self.start_fuse()
+            return self.start_fuse(it)
         if k == "scroll":
             self.remove_item(it)
             self.msg(f"{name}をよんだ！", 12)
@@ -3267,21 +3265,27 @@ class Game:
         return False
 
     # ---------------------------------------------------------------- 合成
-    def start_fuse(self):
-        """合成の巻物。合成できる個数は、よむたびにランダム（1〜3個）。"""
+    def start_fuse(self, scroll):
+        """合成の巻物。合成できる個数（1〜3個）は巻物ごとに決まっていて、読み直しても変わらない。
+        巻物がなくなるのは「けってい」で合成したときだけ。途中でやめれば巻物は残り、ターンも進まない。"""
         gear = [g for g in self.p.inv if is_gear(g)]
-        self.fuse_n = random.choice([1, 1, 2, 2, 3])
+        if "fuse_n" not in scroll:
+            scroll["fuse_n"] = random.choice([1, 1, 2, 2, 3])
         if len(gear) < 2:
-            self.msg("しかし、合成できる剣や盾が2つ以上ない…。巻物は燃えてしまった。", 13)
-            return True
-        self.flash_screen = 6
-        self.msg(f"光がうずまく…！ {self.fuse_n}個まで合成できる。", 12)
+            self.msg("合成できる剣や盾が2つ以上ない。（巻物はそのまま）", 13)
+            return False
+        self.fuse_scroll = scroll
+        self.fuse_n = scroll["fuse_n"]
+        self.msg(f"{scroll['name']}をひらいた。{self.fuse_n}個まで合成できる。", 12)
         self.fuse_base = None
         self.fuse_picks = []
         self.fuse_sel = 0
         self.state = "fuse_base"
         self.need_release = True
         return False
+
+    def fuse_candidates_all(self):
+        return [g for g in self.p.inv if is_gear(g)]
 
     def fuse_candidates(self):
         gear = [g for g in self.p.inv if is_gear(g)]
@@ -3290,10 +3294,15 @@ class Game:
         k = ITEMS[self.fuse_base["name"]]["k"]
         return [g for g in gear if g is not self.fuse_base and ITEMS[g["name"]]["k"] == k]
 
-    def fuse_end(self):
+    def fuse_end(self, used=True):
         self.state = "play"
         self.need_release = True
-        self.end_turn()
+        if used:
+            self.end_turn()
+
+    def fuse_cancel(self):
+        self.msg("合成をやめた。（巻物はそのまま）", 13)
+        self.fuse_end(used=False)
 
     def upd_fuse_base(self):
         cands = self.fuse_candidates()
@@ -3304,15 +3313,16 @@ class Game:
         if menu_p(KD):
             self.fuse_sel = (self.fuse_sel + 1) % n
         if pressed(KX):
-            self.msg("合成をやめた。巻物の力は消えてしまった。", 13)
-            self.fuse_end()
+            self.fuse_cancel()
         elif pressed(KZ):
             base = cands[self.fuse_sel]
             self.fuse_base = base
             if not self.fuse_candidates():
                 k = "剣" if ITEMS[base["name"]]["k"] == "weapon" else "盾"
-                self.msg(f"素材にできる{k}がない。巻物の力は消えてしまった。", 13)
-                self.fuse_end()
+                self.msg(f"素材にできる{k}がない。別の土台をえらぼう。", 13)
+                self.fuse_base = None
+                sfx(2)
+                self.need_release = True
                 return
             self.fuse_picks = []
             self.fuse_sel = 0
@@ -3328,8 +3338,12 @@ class Game:
         if menu_p(KD):
             self.fuse_sel = (self.fuse_sel + 1) % n
         if pressed(KX):
-            self.msg("合成をやめた。巻物の力は消えてしまった。", 13)
-            self.fuse_end()
+            # 土台えらびにもどる
+            self.fuse_sel = self.fuse_candidates_all().index(self.fuse_base) if self.fuse_base in self.p.inv else 0
+            self.fuse_base = None
+            self.fuse_picks = []
+            self.state = "fuse_base"
+            self.need_release = True
         elif pressed(KZ):
             if self.fuse_sel < len(cands):
                 g = cands[self.fuse_sel]
@@ -3349,6 +3363,11 @@ class Game:
     def do_fuse(self):
         base = self.fuse_base
         mats = list(self.fuse_picks)
+        sc = getattr(self, "fuse_scroll", None)
+        if sc is not None and sc in self.p.inv:
+            self.p.inv.remove(sc)       # 巻物は、合成を決めたときにはじめて使ったことになる
+        self.fuse_scroll = None
+        self.msg("合成の巻物をよんだ！ 光がうずまく…！", 12)
         add = sum(m["plus"] for m in mats)
         moved, lost = [], []
         for m in mats:
@@ -3392,7 +3411,7 @@ class Game:
             txt(x + 8, y + 5, f"合成の巻物：土台にする剣か盾をえらぶ（最大{self.fuse_n}個まで素材にできる）", 10)
         else:
             txt(x + 8, y + 5, f"素材をえらぶ（{len(self.fuse_picks)}/{self.fuse_n}）  土台: {item_label(self.fuse_base)}", 10)
-        txt(x + 8, y + 17, "Z:えらぶ  X:やめる（巻物は消える）", 13)
+        txt(x + 8, y + 17, "Z:えらぶ  X:" + ("やめる（巻物はそのまま）" if self.state == "fuse_base" else "土台えらびにもどる"), 13)
         for i in range(top, min(rows, top + vis)):
             yy = y + 30 + (i - top) * 12
             if i == self.fuse_sel:

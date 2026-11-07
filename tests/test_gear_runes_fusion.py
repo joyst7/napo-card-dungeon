@@ -291,7 +291,7 @@ orig_choice = main.random.choice
 main.random.choice = lambda seq: 3
 ret = g.do_item(scroll, "よむ")
 main.random.choice = orig_choice
-assert ret is False and g.state == "fuse_base" and g.fuse_n == 3 and scroll not in g.p.inv
+assert ret is False and g.state == "fuse_base" and g.fuse_n == 3 and scroll in g.p.inv, "読んだだけでは巻物はなくならない"
 cands = g.fuse_candidates()
 assert len(cands) == 5
 g.draw()
@@ -325,7 +325,8 @@ print("合成後:", main.item_label(base), base["marks"], "枠", base["slots"])
 assert base["plus"] == 1 + 2 + 3 + 1
 assert base["marks"] == ["fire", "renda"][:1] + ["renda"] + [] or base["marks"] == ["fire", "renda"], base["marks"]
 assert len(base["marks"]) <= base["slots"]
-assert g.state == "play" and len(g.p.inv) == n_inv - 3 and g.turn == turn0 + 1
+assert g.state == "play" and len(g.p.inv) == n_inv - 4 and g.turn == turn0 + 1   # 素材3つと巻物
+assert scroll not in g.p.inv, "けっていで合成したら巻物はなくなる"
 assert not any(x in g.p.inv for x in (m1, m2, m3))
 print("合成 OK")
 # 素材の印が枠より多いとき、あふれた印は消える
