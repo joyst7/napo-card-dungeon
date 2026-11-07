@@ -1125,6 +1125,7 @@ class Game:
         init_music()
         self.bgm_on = True
         self.bgm_cur = None
+        self.dev_stairs = False     # 開発者モード（Q+E）: 階段の部屋をマップで点滅
         for nm in ITEMS:      # 2列表示に収まらない長い名前を、開発中に気づけるようにする
             if len(nm) > ITEM_NAME_MAX:
                 print(f"[警告] アイテム名が長すぎます({len(nm)}文字>{ITEM_NAME_MAX}): {nm}")
@@ -1669,6 +1670,12 @@ class Game:
                 self.new_game()
             elif self.anim_t > 40 and pressed(KX):
                 self.state = "title"
+            return
+        if st == "play" and ((pyxel.btn(pyxel.KEY_Q) and pyxel.btnp(pyxel.KEY_E))
+                             or (pyxel.btn(pyxel.KEY_E) and pyxel.btnp(pyxel.KEY_Q))):
+            # 開発者モード: 右上マップで、階段のある部屋を点滅させる
+            self.dev_stairs = not self.dev_stairs
+            self.msg("（開発）階段の部屋をマップに表示: " + ("オン" if self.dev_stairs else "オフ"), 13)
             return
         if st == "play" and pyxel.btnp(pyxel.KEY_I):
             self.info_page = 0
@@ -2469,6 +2476,7 @@ class Game:
                 ("パッシブは、確率や倍率が1枚ごとに増える。ただし回数は増えず、れんげきは何枚でも最大2回攻撃。", 7),
                 ("わざ（魔法）は同じカードを持っても効果は同じ。枠をとるだけ。", 7),
                 ("はらもちは重ねても同じ。ふたつめのいのちは1枚につき1回。", 7),
+                ("【開発者モード】Q+E同時押しで、階段の部屋を右上マップで点滅させる（もう一度でオフ）", 13),
                 ("【風】", 10),
                 (f"1フロア{FLOOR_TURN_LIMIT}ターンで風に飛ばされる。あと200・100・30ターンで知らせが出る。", 9),
             ]
@@ -4044,6 +4052,9 @@ class Game:
                     pyxel.rect(x + 7, y + 1, 2, 2, 9)
             else:
                 pyxel.rectb(x, y, 10, 6, 5)
+            if self.dev_stairs and (rr.stairs or rr.boss_room) and (self.frame // 10) % 2 == 0:
+                pyxel.rect(x, y, 10, 6, 8)
+                pyxel.rectb(x - 1, y - 1, 12, 8, 7)
 
     def draw_log(self):
         pyxel.rect(0, LOG_Y, W, H - LOG_Y, 0)
