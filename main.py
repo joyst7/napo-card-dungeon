@@ -27,6 +27,7 @@ DUNGEONS = [
 ]
 FLOOR_TURN_LIMIT = 600     # 1フロアに居られるターン数
 INV_MAX = 20
+INV_ROWS = 12              # もちもの画面で一度に見せる行数（超えたらスクロール）
 CARD_MAX = 10
 SLIDE_FRAMES = 8
 
@@ -927,6 +928,7 @@ class Game:
         self.dash_t = 0
         self.need_release = True
         self.inv_sel = 0
+        self.inv_top = 0
         self.sk_sel = 0
         self.anim_t = 0
         self.slide = None
@@ -1762,6 +1764,8 @@ class Game:
             self.kill_prog -= self.kill_need
             self.kill_need = min(7, self.kill_need + 1)
             self.pending_cards += 1
+        if not self.pending_cards and e.ai != "boss":
+            self.msg(f"カードまで あと{self.kill_need - self.kill_prog}体", 11)
         if e.ai == "boss":
             self.shake = 20
             self.flash_screen = 14
@@ -1880,16 +1884,48 @@ class Game:
                 r.enemies.append(e)
                 self.msg(f"{e.kind}が部屋に入ってきた！", 9)
         left = FLOOR_TURN_LIMIT - self.fturn
-        if left == 150:
-            self.msg("風が吹いてきた…（このフロアにいられるのはあと150ターン）", 9)
-        elif left == 40:
-            self.msg("風が強くなってきた！もうすぐ吹き飛ばされる！", 8)
+        if left == 200:
+            self.msg("遠くで風の音がする…（あと200ターン）", 9)
+        elif left == 100:
+            self.msg("風が強まってきた。階段を急ごう！（あと100ターン）", 9)
+        elif left == 30:
+            self.shake = 12
+            self.msg("風がうなる！飛ばされるぞ！（あと30ターン）", 8)
         elif left <= 0:
             self.game_over("風に吹き飛ばされた")
             return
         if self.pending_cards > 0 and self.state == "play":
             self.pending_cards -= 1
-            self.open_cards(self.draw_cards(3, self.level_rates(), False), "level")
+            self.start_card_intro(self.draw_cards(3, self.level_rates(), False), "level")
+
+    def start_card_intro(self, ids, src):
+        """敵をたおした直後にいきなりカード画面へ飛ばず、「目標たっせい！」の間を挟む。"""
+        self.ci_ids = ids
+        self.ci_src = src
+        self.ci_t = 0
+        self.state = "card_intro"
+        self.need_release = True
+        self.dash = None
+        self.flash_screen = 6
+        sfx(10)
+
+    def upd_card_intro(self):
+        self.ci_t += 1
+        if self.ci_t >= 55 or (self.ci_t > 18 and pressed(KZ)):
+            self.open_cards(self.ci_ids, self.ci_src)
+
+    def draw_card_intro(self):
+        k = min(1.0, self.ci_t / 8)
+        lines = ["たおした数が たまった！", "★ カードがもらえる ★"]
+        w = max(tw(s) for s in lines) + 28
+        h = int(46 * k)
+        x = (W - w) // 2
+        y = ROOM_Y + 84
+        pyxel.rect(x, y, w, h, 1)
+        pyxel.rectb(x, y, w, h, 10 if (self.ci_t // 6) % 2 else 7)
+        if k >= 1.0:
+            txts((W - tw(lines[0])) // 2, y + 10, lines[0], 7)
+            txts((W - tw(lines[1])) // 2, y + 26, lines[1], 10)
 
     def enemies_act(self):
         p = self.p
@@ -2152,7 +2188,7 @@ class Game:
         self.need_release = True
         if self.pending_cards > 0:
             self.pending_cards -= 1
-            self.open_cards(self.draw_cards(3, self.level_rates(), False), "level")
+            self.start_card_intro(self.draw_cards(3, self.level_rates(), False), "level")
 
     def upd_discard(self):
         n = CARD_MAX + 1
@@ -2678,6 +2714,8 @@ class Game:
             self.draw_inv()
         elif st == "skills":
             self.draw_skills()
+        elif st == "card_intro":
+            self.draw_card_intro()
         elif st == "cards":
             self.draw_cards_ui()
         elif st == "discard":
@@ -3015,8 +3053,8 @@ class Game:
             txt(x + 20, 13, "魔", 6 if e.mag else 13)
             txt(x + 30, 13, "○" if e.mag else "×", 7 if e.mag else 8)
         txt(164, 13, f"カード{len(p.cards)}/{CARD_MAX}", 14)
-        txt(218, 13, f"あと{self.kill_need - self.kill_prog}", 11)
-        left = FLOOR_TURN_LIMIT - self.fturn
+        # 次のカードまでの撃破数（強敵は3体ぶん）
+        txt(222, 13, f"あと{self.kill_need - self.kill_prog}体", 11)
         mx, my = 275, 1
         for (gx, gy), rr in self.rooms.items():
             x = mx + gx * 11
@@ -3036,8 +3074,6 @@ class Game:
                     pyxel.rect(x + 7, y + 1, 2, 2, 9)
             else:
                 pyxel.rectb(x, y, 10, 6, 5)
-        tcol = 7 if left > 150 else 9 if left > 40 else 8
-        txt(250, 13, f"T{self.fturn}", tcol)
 
     def draw_log(self):
         pyxel.rect(0, LOG_Y, W, H - LOG_Y, 0)
@@ -3066,23 +3102,43 @@ class Game:
     def draw_inv(self):
         p = self.p
         x, y, w = 150, ROOM_Y + 4, 166
-        h = 16 + 12 * len(p.inv) + 30
+        n = len(p.inv)
+        rows = min(n, INV_ROWS)
+        # 持ち物が多いときはリストをスクロールさせる（画面からはみ出さない）
+        top = getattr(self, "inv_top", 0)
+        top = max(0, min(top, self.inv_sel, n - rows))
+        if self.inv_sel >= top + rows:
+            top = self.inv_sel - rows + 1
+        self.inv_top = top
+        h = 20 + 12 * rows
         self.panel(x, y, w, h)
-        txt(x + 6, y + 4, f"もちもの {len(p.inv)}/{INV_MAX}", 10)
+        txt(x + 6, y + 4, f"もちもの {n}/{INV_MAX}", 10)
         txt(x + w - tw("C:せいとん") - 6, y + 4, "C:せいとん", 13)
-        for i, it in enumerate(p.inv):
-            yy = y + 17 + i * 12
+        for row in range(rows):
+            i = top + row
+            it = p.inv[i]
+            yy = y + 17 + row * 12
             if i == self.inv_sel:
                 pyxel.rect(x + 3, yy - 1, w - 6, 12, 5)
             txt(x + 6, yy, "E" if it["eq"] else " ", 10)
             txt(x + 14, yy, item_label(it), 7)
+        if top > 0:
+            txt(x + w - 14, y + 17, "▲", 10)
+        if top + rows < n:
+            txt(x + w - 14, y + 17 + (rows - 1) * 12, "▼", 10)
+        # 説明は画面下の固定欄に出す（長い説明も3行まで読める）
         it = p.inv[self.inv_sel]
-        for i, line in enumerate(wrap(ITEMS[it["name"]]["desc"], w - 12)[:2]):
-            txt(x + 6, y + h - 26 + i * 11, line, 6)
+        dx, dy, dw, dh = 4, 208, W - 8, 60
+        self.panel(dx, dy, dw, dh)
+        txt(dx + 8, dy + 5, item_label(it), 10)
+        for i, line in enumerate(wrap(ITEMS[it["name"]]["desc"], dw - 16)[:3]):
+            txt(dx + 8, dy + 18 + i * 11, line, 7)
         if self.state == "inv_act":
             acts = self.item_actions(it)
-            ax, ay = x - 62, y + 17 + self.inv_sel * 12
-            self.panel(ax, ay, 58, 8 + 12 * len(acts))
+            ah = 8 + 12 * len(acts)
+            ax = x - 62
+            ay = min(y + 17 + (self.inv_sel - top) * 12, dy - 4 - ah)
+            self.panel(ax, ay, 58, ah)
             for i, a in enumerate(acts):
                 if i == self.act_sel:
                     pyxel.rect(ax + 3, ay + 3 + i * 12, 52, 12, 5)
@@ -3338,7 +3394,7 @@ class Game:
             ("", 7),
             ("ルール", 10),
             ("いちばん奥の『ゆめくい』をたおせばクリア", 7),
-            ("敵をたおすとカード3枚から1枚えらべる", 7),
+            ("敵をたおすとカードが選べる（あと○体が目安）", 7),
             ("カードは10枚まで。11枚目は1枚すてる", 7),
             ("同じカードは重なって効果が上がる", 7),
             ("どうぐカードはカード枠を使わない", 3),
